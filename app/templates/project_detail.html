@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — ProjectVault{% endblock %}
+{% block content %}
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div>
+      <a href="/" class="back-link">← Back to Dashboard</a>
+      <div class="flex-row gap-3 mt-2">
+        <h1 class="page-title">{{ project.name }}</h1>
+        {% if project.adm_group %}
+        <span class="badge badge-sensitive">sensitive</span>
+        {% endif %}
+      </div>
+      <p class="page-sub">
+        Primary group: <code>{{ project.primary_group }}</code>
+        {% if project.adm_group %} · Admin group: <code>{{ project.adm_group }}</code>{% endif %}
+      </p>
+    </div>
+    {% if can_manage %}
+    <form method="post" action="/projects/{{ project.name }}/delete"
+          onsubmit="return confirm('Delete project {{ project.name }} and all its files? This cannot be undone.')">
+      <button type="submit" class="btn btn-danger">Delete Project</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Project Members -->
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Project Members</h2>
+      <span class="card-sub">Group <code>{{ project.primary_group }}</code></span>
+    </div>
+    {% if can_manage %}
+    <form method="post" action="/projects/{{ project.name }}/members" class="card-body">
+      <div class="field">
+        <label class="field-label" for="members">Members</label>
+        <input
+          id="members"
+          name="members"
+          type="text"
+          class="field-input"
+          value="{{ project.members | join(', ') }}"
+        />
+        <p class="field-hint">Comma-separated usernames. Removing a name removes their access.</p>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Members</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="card-body">
+      <div class="chip-list">
+        {% for m in project.members %}
+        <span class="chip {% if m == username %}chip-self{% endif %}">{{ m }}</span>
+        {% endfor %}
+      </div>
+      <p class="muted mt-3 small">You have read-only access to this project.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Subfolders -->
+  <div class="section-header mt-8">
+    <h2 class="section-title">Restricted Subfolders</h2>
+    <p class="section-sub">Subfolders are hidden from users not in their group (Samba ABE).</p>
+  </div>
+
+  {% for sub in project.subfolders %}
+  <div class="card mt-3 subfolder-card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">
+          <span class="folder-icon">📂</span>
+          /{{ sub.name }}
+        </h3>
+        <span class="card-sub">Group <code>{{ sub.group }}</code></span>
+      </div>
+      {% if can_manage %}
+      <form method="post"
+            action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/delete"
+            onsubmit="return confirm('Delete subfolder /{{ sub.name }}?')">
+        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if can_manage %}
+    <form method="post"
+          action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/members"
+          class="card-body">
+      <div class="field">
+        <label class="field-label" for="sub_members_{{ sub.name }}">Members</label>
+        <input
+          id="sub_members_{{ sub.name }}"
+          name="members"
+          type="text"
+          class="field-input"
+          value="{{ sub.members | join(', ') }}"
+        />
+        <p class="field-hint">Comma-separated. These users can see and write to /{{ sub.name }}.</p>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="card-body">
+      <div class="chip-list">
+        {% for m in sub.members %}
+        <span class="chip {% if m == username %}chip-self{% endif %}">{{ m }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if can_manage %}
+  <!-- Add subfolder -->
+  <div class="card mt-3 card-dashed">
+    <div class="card-header">
+      <h3 class="card-title">Add Restricted Subfolder</h3>
+    </div>
+    <form method="post"
+          action="/projects/{{ project.name }}/subfolders/new"
+          class="card-body subfolder-new-form">
+      <div class="field field-inline">
+        <div class="field-group">
+          <label class="field-label" for="folder_name">Folder name</label>
+          <input
+            id="folder_name"
+            name="folder_name"
+            type="text"
+            class="field-input"
+            placeholder="adm"
+          />
+        </div>
+        <div class="field-group field-grow">
+          <label class="field-label" for="sub_new_members">Members</label>
+          <input
+            id="sub_new_members"
+            name="members"
+            type="text"
+            class="field-input"
+            placeholder="alice, bob"
+          />
+        </div>
+        <div class="field-group field-action">
+          <label class="field-label">&nbsp;</label>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </div>
+      <p class="field-hint">Creates <code>/projects/{{ project.name }}/&lt;name&gt;</code> with group <code>grp-{{ project.name }}-&lt;name&gt;</code> (chmod 2770).</p>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

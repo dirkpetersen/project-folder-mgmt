@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ProjectVault{% endblock %}
+{% block content %}
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Projects</h1>
+      <p class="page-sub">Welcome back, <strong>{{ username }}</strong></p>
+    </div>
+    <a href="/projects/new" class="btn btn-primary">
+      <span>+</span> New Project
+    </a>
+  </div>
+
+  <!-- matrix: all projects showing who manages / who is member -->
+  {% if all_projects %}
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Access Matrix</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Members</th>
+            <th>Managers</th>
+            <th>Subfolders</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in all_projects %}
+          <tr class="{% if username in p.members %}row-mine{% endif %}">
+            <td>
+              <a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a>
+              {% if p.adm_group %}<span class="badge badge-sensitive">sensitive</span>{% endif %}
+            </td>
+            <td>
+              <div class="chip-list">
+                {% for m in p.members %}
+                <span class="chip {% if m == username %}chip-self{% endif %}">{{ m }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td>
+              <div class="chip-list">
+                {% for m in p.managers %}
+                <span class="chip chip-manager {% if m == username %}chip-self{% endif %}">{{ m }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td>
+              {% if p.subfolders %}
+              <div class="chip-list">
+                {% for s in p.subfolders %}<span class="chip chip-folder">{{ s.name }}</span>{% endfor %}
+              </div>
+              {% else %}
+              <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if username in p.members %}
+              <a href="/projects/{{ p.name }}" class="btn btn-sm btn-ghost">View</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📁</div>
+    <h3>No projects yet</h3>
+    <p>Create your first project to get started.</p>
+    <a href="/projects/new" class="btn btn-primary mt-4">Create a project</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

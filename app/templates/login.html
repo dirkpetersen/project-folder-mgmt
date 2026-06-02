@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Sign In — ProjectVault{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-icon">⬡</div>
+    <h1 class="auth-title">ProjectVault</h1>
+    <p class="auth-sub">Manage your project folders</p>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="auth-form">
+      <div class="field">
+        <label class="field-label" for="username">Username</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          class="field-input"
+          placeholder="your system username"
+          autofocus
+          required
+        />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

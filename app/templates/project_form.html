@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}New Project — ProjectVault{% endblock %}
+{% block content %}
+<div class="page-wrap page-narrow">
+
+  <div class="page-header">
+    <div>
+      <a href="/" class="back-link">← Back to Dashboard</a>
+      <h1 class="page-title mt-2">Create New Project</h1>
+    </div>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-error mb-4">{{ error }}</div>
+  {% endif %}
+
+  <div class="card">
+    <form method="post" action="/projects/new">
+
+      <div class="field">
+        <label class="field-label" for="name">Project Name</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          class="field-input"
+          placeholder="e.g. my-research-project"
+          value="{{ form.get('name','') }}"
+          autofocus
+          required
+        />
+        <p class="field-hint">11–49 characters. Letters, numbers, hyphens only. Spaces become hyphens.</p>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="members">Initial Members</label>
+        <textarea
+          id="members"
+          name="members"
+          class="field-input field-textarea"
+          placeholder="alice, bob, charlie"
+          rows="3"
+        >{{ form.get('members','') }}</textarea>
+        <p class="field-hint">Comma-separated usernames. You are always included.</p>
+      </div>
+
+      <div class="form-actions">
+        <a href="/" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create Project</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
