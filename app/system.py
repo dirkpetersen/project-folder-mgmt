@@ -137,15 +137,38 @@ def create_subfolder(project_name: str, folder_name: str, members: list[str]) ->
     _provision_dir(folder_path, sub_group, 0o2770)
 
 
-def delete_project(project_name: str) -> None:
+def set_stewards(project_name: str, stewards: list[str]) -> None:
+    """Set the data stewards (project admins) = members of grp-<name>-adm.
+
+    If stewards is non-empty, only they may manage the project. If it is empty,
+    the adm group is removed and management reverts to all project members.
+    """
+    adm_group = f"{GROUP_PREFIX}{project_name}-adm"
+    if stewards:
+        sync_group_members(adm_group, stewards)  # creates the group if needed
+    else:
+        delete_group(adm_group)
+
+
+def archive_project(project_name: str) -> None:
+    """Soft-delete: move the project folder into projects/.deleted/<name>.
+
+    Files are preserved (not destroyed) and the groups are left intact so the
+    project remains restorable. Once moved out of the active area it no longer
+    appears in listings.
+    """
     root_path = PROJECTS_BASE / project_name
-    if root_path.exists():
-        shutil.rmtree(root_path)
-    # remove the primary group and all sub-groups
-    for g in grp.getgrall():
-        if g.gr_name == f"{GROUP_PREFIX}{project_name}" or \
-           g.gr_name.startswith(f"{GROUP_PREFIX}{project_name}-"):
-            delete_group(g.gr_name)
+    if not root_path.exists():
+        return
+    deleted_dir = PROJECTS_BASE / ".deleted"
+    deleted_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(deleted_dir, 0o700)  # root-only archive
+    target = deleted_dir / project_name
+    suffix = 1
+    while target.exists():  # avoid clobbering a prior archive of the same name
+        target = deleted_dir / f"{project_name}.{suffix}"
+        suffix += 1
+    shutil.move(str(root_path), str(target))
 
 
 def delete_subfolder(project_name: str, folder_name: str) -> None:

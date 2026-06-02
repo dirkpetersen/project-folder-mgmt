@@ -32,7 +32,11 @@ There is **no password**. Auth is a single username text field — the app trust
 
 ## Who can manage a project
 
-A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-<name>-adm` subgroup exists. The existence of an `-adm` subgroup signals the project is sensitive, and management is then restricted to members of `grp-<name>-adm`. There is no separate "managed by" data store; this is computed from group membership alone.
+A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-<name>-adm` subgroup exists. The existence of an `-adm` subgroup signals the project is sensitive, and management is then restricted to members of `grp-<name>-adm`. There is no separate "managed by" data store; this is computed from group membership alone (`Project.managers` in `app/projects.py`).
+
+**Data stewards / project admins** are exactly the members of `grp-<name>-adm`, edited via `set_stewards()` (`app/system.py`) / `POST /projects/<name>/stewards`. Listing anyone here is what creates the adm group, so regular members immediately lose management rights; clearing the field deletes the adm group and management reverts to all members. There is no dedicated `adm` *folder* unless a manager also creates one as a restricted subfolder.
+
+**Deletion is soft.** `archive_project()` (`app/system.py`) moves the project folder to `projects/.deleted/<name>` (root-only, `0700`; collisions get a `.N` suffix) rather than destroying it, and leaves the groups intact so it can be restored. The old destructive `delete_project` is gone. `list_projects()` skips dot-directories, so `.deleted` never appears in listings.
 
 ## The permission model (the core domain logic)
 

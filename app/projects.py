@@ -138,8 +138,8 @@ def list_projects() -> list[Project]:
         return []
     projects = []
     for entry in sorted(PROJECTS_BASE.iterdir()):
-        if not entry.is_dir():
-            continue
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue  # skip dotfiles like the .deleted archive
         p = get_project(entry.name)
         if p:
             projects.append(p)

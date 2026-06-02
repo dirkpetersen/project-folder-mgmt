@@ -19,8 +19,8 @@
     </div>
     {% if can_manage %}
     <form method="post" action="/projects/{{ project.name }}/delete"
-          onsubmit="return confirm('Delete project {{ project.name }} and all its files? This cannot be undone.')">
-      <button type="submit" class="btn btn-danger">Delete Project</button>
+          onsubmit="return confirm('Archive project {{ project.name }}? Its files are moved to projects/.deleted and it disappears from listings. An administrator can restore it.')">
+      <button type="submit" class="btn btn-danger">Archive Project</button>
     </form>
     {% endif %}
   </div>
@@ -94,6 +94,50 @@
         {% endfor %}
       </div>
       <p class="muted mt-3 small">You have read-only access to this project.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Data Stewards / Project Admins -->
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Data Stewards</h2>
+      <span class="card-sub">
+        {% if project.adm_group %}Group <code>{{ project.adm_group }}</code>{% else %}Not set{% endif %}
+      </span>
+    </div>
+    {% if can_manage %}
+    <form method="post" action="/projects/{{ project.name }}/stewards" class="card-body">
+      <div class="field">
+        <label class="field-label" for="stewards">Stewards / Project Admins</label>
+        <input
+          id="stewards"
+          name="stewards"
+          type="text"
+          class="field-input"
+          value="{{ project.adm_members | join(', ') }}"
+        />
+        <p class="field-hint">
+          Comma-separated usernames. <strong>If anyone is listed here, only these
+          users can manage the project</strong> — regular members lose management
+          rights. Leave empty to let all members manage it again.
+        </p>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Stewards</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="card-body">
+      {% if project.adm_members %}
+      <div class="chip-list">
+        {% for m in project.adm_members %}
+        <span class="chip chip-manager {% if m == username %}chip-self{% endif %}">{{ m }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted small">No data stewards — all members manage this project.</p>
+      {% endif %}
     </div>
     {% endif %}
   </div>

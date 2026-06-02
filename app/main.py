@@ -18,10 +18,11 @@ from app.projects import (
 )
 from app.system import (
     TEST_USERS,
+    archive_project,
     create_project,
     create_subfolder,
-    delete_project,
     delete_subfolder,
+    set_stewards,
     sync_group_members,
     user_exists,
     write_metadata,
@@ -203,6 +204,17 @@ async def update_members(
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
+@app.post("/projects/{project_name}/stewards")
+async def update_stewards(
+    request: Request,
+    project_name: str,
+    stewards: Annotated[str, Form()] = "",
+):
+    require_manager(request, project_name)
+    set_stewards(project_name, _parse_usernames(stewards))
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
 @app.post("/projects/{project_name}/metadata")
 async def update_metadata(
     request: Request,
@@ -221,7 +233,7 @@ async def update_metadata(
 @app.post("/projects/{project_name}/delete")
 async def do_delete_project(request: Request, project_name: str):
     require_manager(request, project_name)
-    delete_project(project_name)
+    archive_project(project_name)
     return RedirectResponse(url="/", status_code=303)
 
 

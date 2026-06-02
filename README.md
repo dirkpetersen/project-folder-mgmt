@@ -96,15 +96,21 @@ sudo PROJECTS_BASE=/projects ./run.py
   (`chmod 0600`). Editable by managers.
 - **Manage members** — a comma-separated text field of usernames. Removing a name
   removes that user from the project.
-- **Restricted subfolders** — add siblings (e.g. `adm`, `mkt`, `samples`), each
+- **Data stewards** — a comma-separated field of project admins. If anyone is
+  listed here, **only those users can manage the project** and regular members
+  lose management rights. Clear the field to let all members manage it again.
+- **Restricted subfolders** — add siblings (e.g. `mkt`, `samples`), each
   with its own member list. Users not in a subfolder's group can't even see it.
+- **Archive a project** — "deleting" a project is non-destructive: its files are
+  moved to `projects/.deleted/<name>` (readable by root only) and it disappears
+  from listings, so an administrator can restore it.
 
 ### Who can manage a project
 
-A project may be managed by **all members of `grp-<name>`** — *unless* a
-`grp-<name>-adm` subgroup exists. The presence of `-adm` marks the project as
-sensitive, and management is then restricted to members of `grp-<name>-adm`.
-This is computed from group membership alone; there is no separate data store.
+A project may be managed by **all members of `grp-<name>`** — *unless* data
+stewards have been set, which creates a `grp-<name>-adm` group. When that group
+exists, management is restricted to its members. This is computed from group
+membership alone; there is no separate data store.
 
 ### The permission model
 
