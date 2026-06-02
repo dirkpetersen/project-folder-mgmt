@@ -23,6 +23,7 @@ from app.system import (
     delete_subfolder,
     sync_group_members,
     user_exists,
+    write_metadata,
 )
 
 app = FastAPI()
@@ -134,28 +135,37 @@ async def do_create_project(
     request: Request,
     name: Annotated[str, Form()],
     members: Annotated[str, Form()] = "",
+    pi_lead: Annotated[str, Form()] = "",
+    description: Annotated[str, Form()] = "",
+    cost_id: Annotated[str, Form()] = "",
 ):
     username = require_user(request)
+    form = {
+        "name": name, "members": members,
+        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+    }
     try:
         clean_name = validate_project_name(name)
     except ValueError as e:
         return templates.TemplateResponse(request, "project_form.html", {
             "username": username,
             "error": str(e),
-            "form": {"name": name, "members": members},
+            "form": form,
         }, status_code=400)
 
     if get_project(clean_name):
         return templates.TemplateResponse(request, "project_form.html", {
             "username": username,
             "error": f"Project '{clean_name}' already exists.",
-            "form": {"name": name, "members": members},
+            "form": form,
         }, status_code=400)
 
     member_list = _parse_usernames(members)
     if username not in member_list:
         member_list.insert(0, username)
-    create_project(clean_name, member_list)
+    create_project(clean_name, member_list, {
+        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+    })
     return RedirectResponse(url=f"/projects/{clean_name}", status_code=303)
 
 
@@ -185,6 +195,21 @@ async def update_members(
 ):
     _, project = require_manager(request, project_name)
     sync_group_members(project.primary_group, _parse_usernames(members))
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
+@app.post("/projects/{project_name}/metadata")
+async def update_metadata(
+    request: Request,
+    project_name: str,
+    pi_lead: Annotated[str, Form()] = "",
+    description: Annotated[str, Form()] = "",
+    cost_id: Annotated[str, Form()] = "",
+):
+    require_manager(request, project_name)
+    write_metadata(project_name, {
+        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+    })
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 

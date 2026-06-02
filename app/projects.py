@@ -5,7 +5,13 @@ No writes happen here — writes go through system.py.
 import re
 from dataclasses import dataclass, field
 
-from app.system import GROUP_PREFIX, PROJECTS_BASE, get_group_members, group_exists
+from app.system import (
+    GROUP_PREFIX,
+    PROJECTS_BASE,
+    get_group_members,
+    group_exists,
+    read_metadata,
+)
 
 # ---------------------------------------------------------------------------
 # validation
@@ -53,6 +59,9 @@ class Project:
     members: list[str]          # members of primary group
     adm_group: str | None       # grp-<name>-adm if it exists
     adm_members: list[str]      # members of adm group (or [])
+    pi_lead: str = ""           # from .project.json
+    description: str = ""       # from .project.json
+    cost_id: str = ""           # from .project.json
     subfolders: list[Subfolder] = field(default_factory=list)
 
     @property
@@ -103,12 +112,16 @@ def get_project(project_name: str) -> Project | None:
     adm_group_name = f"{GROUP_PREFIX}{project_name}-adm"
     adm_group = adm_group_name if group_exists(adm_group_name) else None
     adm_members = get_group_members(adm_group_name) if adm_group else []
+    meta = read_metadata(project_name)
     return Project(
         name=project_name,
         primary_group=primary_group,
         members=members,
         adm_group=adm_group,
         adm_members=adm_members,
+        pi_lead=meta.get("pi_lead", ""),
+        description=meta.get("description", ""),
+        cost_id=meta.get("cost_id", ""),
         subfolders=_subfolders_for(project_name),
     )
 

@@ -33,6 +33,41 @@
       </div>
 
       <div class="field">
+        <label class="field-label" for="pi_lead">PI / Lead</label>
+        <input
+          id="pi_lead"
+          name="pi_lead"
+          type="text"
+          class="field-input"
+          placeholder="Dr. Jane Smith"
+          value="{{ form.get('pi_lead','') }}"
+        />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="description">Description</label>
+        <textarea
+          id="description"
+          name="description"
+          class="field-input field-textarea"
+          placeholder="What is this project about?"
+          rows="2"
+        >{{ form.get('description','') }}</textarea>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cost_id">Cost ID</label>
+        <input
+          id="cost_id"
+          name="cost_id"
+          type="text"
+          class="field-input"
+          placeholder="e.g. CC-12345"
+          value="{{ form.get('cost_id','') }}"
+        />
+      </div>
+
+      <div class="field">
         <label class="field-label" for="members">Initial Members</label>
         <textarea
           id="members"

@@ -91,6 +91,9 @@ sudo PROJECTS_BASE=/projects ./run.py
 - **Create a project** — name must be **11–49 characters**, lowercase, with
   spaces turned into hyphens and only letters, numbers, and hyphens allowed
   (no dots or other special characters). You are automatically added as a member.
+- **Project details** — PI / Lead, description, and cost ID, stored in a
+  `.project.json` file at the project root that is readable by root only
+  (`chmod 0600`). Editable by managers.
 - **Manage members** — a comma-separated text field of usernames. Removing a name
   removes that user from the project.
 - **Restricted subfolders** — add siblings (e.g. `adm`, `mkt`, `samples`), each

@@ -3,6 +3,7 @@ Privileged system operations — mkdir, chown, chmod, group and user management.
 This module is called from a process that runs as root.
 """
 import grp
+import json
 import os
 import pwd
 import shutil
@@ -13,6 +14,10 @@ from pathlib import Path
 # launched from. Override with the PROJECTS_BASE environment variable.
 PROJECTS_BASE = Path(os.environ.get("PROJECTS_BASE", "projects")).resolve()
 GROUP_PREFIX = "grp-"
+
+# Per-project metadata file, stored at the project root. Readable by root only.
+METADATA_FILE = ".project.json"
+METADATA_FIELDS = ("pi_lead", "description", "cost_id")
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +98,26 @@ def _provision_dir(path: Path, group_name: str, mode: int) -> None:
     os.chmod(path, mode)
 
 
-def create_project(project_name: str, members: list[str]) -> None:
+def read_metadata(project_name: str) -> dict:
+    """Read .project.json from the project root. Returns {} if absent/invalid."""
+    path = PROJECTS_BASE / project_name / METADATA_FILE
+    try:
+        data = json.loads(path.read_text())
+    except (FileNotFoundError, ValueError):
+        return {}
+    return {k: str(data.get(k, "")) for k in METADATA_FIELDS}
+
+
+def write_metadata(project_name: str, metadata: dict) -> None:
+    """Write .project.json at the project root, owned by root and mode 0600."""
+    path = PROJECTS_BASE / project_name / METADATA_FILE
+    data = {k: str(metadata.get(k, "")).strip() for k in METADATA_FIELDS}
+    path.write_text(json.dumps(data, indent=2))
+    os.chown(path, 0, 0)
+    os.chmod(path, 0o600)
+
+
+def create_project(project_name: str, members: list[str], metadata: dict | None = None) -> None:
     """Create the project root + /shr, the primary group, and set membership."""
     primary_group = f"{GROUP_PREFIX}{project_name}"
     sync_group_members(primary_group, members)  # creates the group if needed
@@ -101,6 +125,7 @@ def create_project(project_name: str, members: list[str]) -> None:
     root_path = PROJECTS_BASE / project_name
     _provision_dir(root_path, primary_group, 0o2750)
     _provision_dir(root_path / "shr", primary_group, 0o2770)
+    write_metadata(project_name, metadata or {})
 
 
 def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:

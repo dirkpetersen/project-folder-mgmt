@@ -25,6 +25,44 @@
     {% endif %}
   </div>
 
+  <!-- Project Details (metadata) -->
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Project Details</h2>
+      <span class="card-sub">Stored in <code>.project.json</code> (root only)</span>
+    </div>
+    {% if can_manage %}
+    <form method="post" action="/projects/{{ project.name }}/metadata" class="card-body">
+      <div class="field">
+        <label class="field-label" for="pi_lead">PI / Lead</label>
+        <input id="pi_lead" name="pi_lead" type="text" class="field-input"
+               value="{{ project.pi_lead }}" placeholder="Dr. Jane Smith" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="description">Description</label>
+        <textarea id="description" name="description" class="field-input field-textarea"
+                  rows="2" placeholder="What is this project about?">{{ project.description }}</textarea>
+      </div>
+      <div class="field">
+        <label class="field-label" for="cost_id">Cost ID</label>
+        <input id="cost_id" name="cost_id" type="text" class="field-input"
+               value="{{ project.cost_id }}" placeholder="e.g. CC-12345" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Details</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="card-body">
+      <dl class="meta-list">
+        <dt>PI / Lead</dt><dd>{{ project.pi_lead or "—" }}</dd>
+        <dt>Description</dt><dd>{{ project.description or "—" }}</dd>
+        <dt>Cost ID</dt><dd>{{ project.cost_id or "—" }}</dd>
+      </dl>
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Project Members -->
   <div class="card mt-6">
     <div class="card-header">

@@ -48,6 +48,10 @@ The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./proj
 
 Group naming convention: primary group `grp-<project>`; restricted sub-groups `grp-<project>-<area>`.
 
+## Project metadata
+
+Each project stores extra fields (`pi_lead`, `description`, `cost_id`) in a `.project.json` file at its root, written `chown root:root` / `chmod 0600` so **only root can read it** — it is not exposed via the project group. Defined by `METADATA_FILE`/`METADATA_FIELDS` and `read_metadata`/`write_metadata` in `app/system.py`; surfaced on the `Project` dataclass and editable by managers via `POST /projects/<name>/metadata`. Reads tolerate a missing or malformed file by returning empty values.
+
 ## Project naming rules (validate on creation)
 
 - Length: **> 10 and < 50 characters**.
