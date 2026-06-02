@@ -54,7 +54,7 @@ def require_user(request: Request) -> str:
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    return templates.TemplateResponse(request, "login.html", {"error": error})
 
 
 @app.post("/login")
@@ -66,14 +66,14 @@ async def do_login(
     username = username.strip().lower()
     if not username or not re.match(r"^[a-z0-9_-]+$", username):
         return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Invalid username."},
+            request, "login.html",
+            {"error": "Invalid username."},
             status_code=400,
         )
     if not user_exists(username):
         return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": f"User '{username}' does not exist on this system."},
+            request, "login.html",
+            {"error": f"User '{username}' does not exist on this system."},
             status_code=400,
         )
     resp = RedirectResponse(url="/", status_code=303)
@@ -99,8 +99,7 @@ async def dashboard(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     my_projects = projects_for_user(username)
     all_projects = list_projects()
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "dashboard.html", {
         "username": username,
         "my_projects": my_projects,
         "all_projects": all_projects,
@@ -114,8 +113,7 @@ async def dashboard(request: Request):
 @app.get("/projects/new", response_class=HTMLResponse)
 async def new_project_page(request: Request):
     username = require_user(request)
-    return templates.TemplateResponse("project_form.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "project_form.html", {
         "username": username,
         "error": None,
         "form": {},
@@ -132,16 +130,14 @@ async def do_create_project(
     try:
         clean_name = validate_project_name(name)
     except ValueError as e:
-        return templates.TemplateResponse("project_form.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "project_form.html", {
             "username": username,
             "error": str(e),
             "form": {"name": name, "members": members},
         }, status_code=400)
 
     if get_project(clean_name):
-        return templates.TemplateResponse("project_form.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "project_form.html", {
             "username": username,
             "error": f"Project '{clean_name}' already exists.",
             "form": {"name": name, "members": members},
@@ -165,8 +161,7 @@ async def project_detail(request: Request, project_name: str):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
     can_manage = project.is_manager(username)
-    return templates.TemplateResponse("project_detail.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "project_detail.html", {
         "username": username,
         "project": project,
         "can_manage": can_manage,
