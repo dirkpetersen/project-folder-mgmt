@@ -461,6 +461,32 @@ code {
 }
 .auth-form { text-align: left; }
 
+.auth-users {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+.auth-users-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+.auth-users-chips { gap: 6px; }
+.chip-user {
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.15s ease;
+}
+.chip-user:hover {
+  background: rgba(99,102,241,0.15);
+  border-color: var(--accent);
+  color: #c7d2fe;
+}
+
 /* ─── Empty state ───────────────────────────────────────────────────── */
 .empty-state {
   text-align: center;

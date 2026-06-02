@@ -26,6 +26,25 @@
       </div>
       <button type="submit" class="btn btn-primary btn-full">Sign in</button>
     </form>
+
+    {% if available_users %}
+    <div class="auth-users">
+      <p class="auth-users-label">Test users — click to fill</p>
+      <div class="chip-list auth-users-chips">
+        {% for u in available_users %}
+        <button type="button" class="chip chip-user" onclick="fillUser('{{ u }}')">{{ u }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
+
+<script>
+  function fillUser(name) {
+    const input = document.getElementById('username');
+    input.value = name;
+    input.focus();
+  }
+</script>
 {% endblock %}

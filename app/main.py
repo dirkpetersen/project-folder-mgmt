@@ -17,6 +17,7 @@ from app.projects import (
     validate_subfolder_name,
 )
 from app.system import (
+    TEST_USERS,
     create_project,
     create_subfolder,
     delete_project,
@@ -65,7 +66,11 @@ def require_manager(request: Request, project_name: str):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
-    return templates.TemplateResponse(request, "login.html", {"error": error})
+    available = [u for u in TEST_USERS if user_exists(u)]
+    return templates.TemplateResponse(request, "login.html", {
+        "error": error,
+        "available_users": available,
+    })
 
 
 @app.post("/login")
