@@ -2,7 +2,6 @@
 Read project state from the filesystem + group database.
 No writes happen here — writes go through system.py.
 """
-import grp
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -75,21 +74,28 @@ class Project:
 # ---------------------------------------------------------------------------
 
 def _subfolders_for(project_name: str) -> list[Subfolder]:
-    prefix = f"{GROUP_PREFIX}{project_name}-"
+    """Discover restricted sibling folders from the filesystem.
+
+    Each is a directory under /projects/<name> other than 'shr', backed by a
+    grp-<name>-<folder> group. 'adm' is excluded — it is the management group,
+    surfaced separately on the project.
+    """
+    project_dir = PROJECTS_BASE / project_name
+    if not project_dir.is_dir():
+        return []
     subs = []
-    for g in grp.getgrall():
-        if g.gr_name.startswith(prefix):
-            suffix = g.gr_name[len(prefix):]
-            if suffix == "adm":
-                continue          # adm is handled separately as a management group
-            folder_path = PROJECTS_BASE / project_name / suffix
-            if folder_path.is_dir():
-                subs.append(Subfolder(
-                    name=suffix,
-                    group=g.gr_name,
-                    members=list(g.gr_mem),
-                ))
-    return sorted(subs, key=lambda s: s.name)
+    for entry in sorted(project_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name in ("shr", "adm"):
+            continue
+        sub_group = f"{GROUP_PREFIX}{project_name}-{entry.name}"
+        subs.append(Subfolder(
+            name=entry.name,
+            group=sub_group,
+            members=get_group_members(sub_group),
+        ))
+    return subs
 
 
 def get_project(project_name: str) -> Project | None:
@@ -111,29 +117,23 @@ def get_project(project_name: str) -> Project | None:
 
 
 def list_projects() -> list[Project]:
-    """Return all projects visible as grp-<name> groups that have a folder."""
+    """Return all projects, discovered from the /projects directory.
+
+    The filesystem is the source of truth: a project exists when
+    /projects/<name> is a directory backed by a grp-<name> group. We cannot
+    reliably parse project names out of group names because project names may
+    themselves contain hyphens (e.g. grp-my-research-project).
+    """
+    if not PROJECTS_BASE.is_dir():
+        return []
     projects = []
-    seen: set[str] = set()
-    for g in grp.getgrall():
-        if not g.gr_name.startswith(GROUP_PREFIX):
+    for entry in sorted(PROJECTS_BASE.iterdir()):
+        if not entry.is_dir():
             continue
-        # only primary groups (no dash after prefix, except normalised project names)
-        suffix = g.gr_name[len(GROUP_PREFIX):]
-        # skip sub-groups (they contain another hyphen segment after project name)
-        # primary groups have no '-adm', '-mkt' etc.
-        # we detect them by checking for the folder
-        if "-" in suffix:
-            continue
-        project_name = suffix
-        if project_name in seen:
-            continue
-        folder = PROJECTS_BASE / project_name
-        if folder.is_dir():
-            p = get_project(project_name)
-            if p:
-                projects.append(p)
-                seen.add(project_name)
-    return sorted(projects, key=lambda p: p.name)
+        p = get_project(entry.name)
+        if p:
+            projects.append(p)
+    return projects
 
 
 def projects_for_user(username: str) -> list[Project]:
