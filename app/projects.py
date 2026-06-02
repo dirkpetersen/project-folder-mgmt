@@ -4,33 +4,30 @@ No writes happen here — writes go through system.py.
 """
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from app.system import GROUP_PREFIX, PROJECTS_BASE, get_group_members, group_exists
-
-_NAME_RE = re.compile(r"^[a-z0-9-]{11,49}$")
-
 
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
 
+def _normalize(raw: str) -> str:
+    """Lowercase, spaces to hyphens, strip everything but [a-z0-9-]."""
+    return re.sub(r"[^a-z0-9-]", "", raw.strip().lower().replace(" ", "-"))
+
+
 def validate_project_name(raw: str) -> str:
     """Normalise and validate. Returns the clean name or raises ValueError."""
-    name = raw.strip().lower().replace(" ", "-")
-    name = re.sub(r"[^a-z0-9-]", "", name)
+    name = _normalize(raw)
     if len(name) <= 10:
         raise ValueError("Project name must be longer than 10 characters.")
     if len(name) >= 50:
         raise ValueError("Project name must be shorter than 50 characters.")
-    if not _NAME_RE.match(name):
-        raise ValueError("Only letters, numbers, and hyphens are allowed.")
     return name
 
 
 def validate_subfolder_name(raw: str) -> str:
-    name = raw.strip().lower().replace(" ", "-")
-    name = re.sub(r"[^a-z0-9-]", "", name)
+    name = _normalize(raw)
     if not name:
         raise ValueError("Subfolder name cannot be empty.")
     if name == "shr":

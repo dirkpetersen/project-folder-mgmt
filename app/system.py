@@ -5,6 +5,7 @@ This module is called from a process that runs as root.
 import grp
 import os
 import pwd
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -93,8 +94,7 @@ def _provision_dir(path: Path, group_name: str, mode: int) -> None:
 def create_project(project_name: str, members: list[str]) -> None:
     """Create the project root + /shr, the primary group, and set membership."""
     primary_group = f"{GROUP_PREFIX}{project_name}"
-    create_group(primary_group)
-    sync_group_members(primary_group, members)
+    sync_group_members(primary_group, members)  # creates the group if needed
 
     root_path = PROJECTS_BASE / project_name
     _provision_dir(root_path, primary_group, 0o2750)
@@ -104,19 +104,17 @@ def create_project(project_name: str, members: list[str]) -> None:
 def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:
     """Create a restricted sibling folder and its dedicated sub-group."""
     sub_group = f"{GROUP_PREFIX}{project_name}-{folder_name}"
-    create_group(sub_group)
-    sync_group_members(sub_group, members)
+    sync_group_members(sub_group, members)  # creates the group if needed
 
     folder_path = PROJECTS_BASE / project_name / folder_name
     _provision_dir(folder_path, sub_group, 0o2770)
 
 
 def delete_project(project_name: str) -> None:
-    import shutil
     root_path = PROJECTS_BASE / project_name
     if root_path.exists():
         shutil.rmtree(root_path)
-    # remove all associated groups
+    # remove the primary group and all sub-groups
     for g in grp.getgrall():
         if g.gr_name == f"{GROUP_PREFIX}{project_name}" or \
            g.gr_name.startswith(f"{GROUP_PREFIX}{project_name}-"):
@@ -124,12 +122,10 @@ def delete_project(project_name: str) -> None:
 
 
 def delete_subfolder(project_name: str, folder_name: str) -> None:
-    import shutil
     folder_path = PROJECTS_BASE / project_name / folder_name
     if folder_path.exists():
         shutil.rmtree(folder_path)
-    sub_group = f"{GROUP_PREFIX}{project_name}-{folder_name}"
-    delete_group(sub_group)
+    delete_group(f"{GROUP_PREFIX}{project_name}-{folder_name}")
 
 
 # ---------------------------------------------------------------------------

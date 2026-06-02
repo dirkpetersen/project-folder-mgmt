@@ -4,12 +4,11 @@ FastAPI entry point. Runs as root.
 import re
 from typing import Annotated
 
-from fastapi import Cookie, FastAPI, Form, HTTPException, Request, Response
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import system
 from app.projects import (
     get_project,
     list_projects,
@@ -48,6 +47,17 @@ def require_user(request: Request) -> str:
     return u
 
 
+def require_manager(request: Request, project_name: str):
+    """Load the project and ensure the current user may manage it."""
+    username = require_user(request)
+    project = get_project(project_name)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    if not project.is_manager(username):
+        raise HTTPException(status_code=403, detail="Not authorised.")
+    return username, project
+
+
 # ---------------------------------------------------------------------------
 # login / logout
 # ---------------------------------------------------------------------------
@@ -60,7 +70,6 @@ async def login_page(request: Request, error: str = ""):
 @app.post("/login")
 async def do_login(
     request: Request,
-    response: Response,
     username: Annotated[str, Form()],
 ):
     username = username.strip().lower()
@@ -174,25 +183,14 @@ async def update_members(
     project_name: str,
     members: Annotated[str, Form()] = "",
 ):
-    username = require_user(request)
-    project = get_project(project_name)
-    if not project:
-        raise HTTPException(status_code=404)
-    if not project.is_manager(username):
-        raise HTTPException(status_code=403, detail="Not authorised.")
-    member_list = _parse_usernames(members)
-    sync_group_members(project.primary_group, member_list)
+    _, project = require_manager(request, project_name)
+    sync_group_members(project.primary_group, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
 @app.post("/projects/{project_name}/delete")
 async def do_delete_project(request: Request, project_name: str):
-    username = require_user(request)
-    project = get_project(project_name)
-    if not project:
-        raise HTTPException(status_code=404)
-    if not project.is_manager(username):
-        raise HTTPException(status_code=403, detail="Not authorised.")
+    require_manager(request, project_name)
     delete_project(project_name)
     return RedirectResponse(url="/", status_code=303)
 
@@ -208,18 +206,12 @@ async def do_create_subfolder(
     folder_name: Annotated[str, Form()],
     members: Annotated[str, Form()] = "",
 ):
-    username = require_user(request)
-    project = get_project(project_name)
-    if not project:
-        raise HTTPException(status_code=404)
-    if not project.is_manager(username):
-        raise HTTPException(status_code=403, detail="Not authorised.")
+    require_manager(request, project_name)
     try:
         clean_folder = validate_subfolder_name(folder_name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    member_list = _parse_usernames(members)
-    create_subfolder(project_name, clean_folder, member_list)
+    create_subfolder(project_name, clean_folder, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
@@ -230,15 +222,9 @@ async def update_subfolder_members(
     folder_name: str,
     members: Annotated[str, Form()] = "",
 ):
-    username = require_user(request)
-    project = get_project(project_name)
-    if not project:
-        raise HTTPException(status_code=404)
-    if not project.is_manager(username):
-        raise HTTPException(status_code=403, detail="Not authorised.")
+    require_manager(request, project_name)
     sub_group = f"grp-{project_name}-{folder_name}"
-    member_list = _parse_usernames(members)
-    sync_group_members(sub_group, member_list)
+    sync_group_members(sub_group, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
@@ -248,12 +234,7 @@ async def do_delete_subfolder(
     project_name: str,
     folder_name: str,
 ):
-    username = require_user(request)
-    project = get_project(project_name)
-    if not project:
-        raise HTTPException(status_code=404)
-    if not project.is_manager(username):
-        raise HTTPException(status_code=403, detail="Not authorised.")
+    require_manager(request, project_name)
     delete_subfolder(project_name, folder_name)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
