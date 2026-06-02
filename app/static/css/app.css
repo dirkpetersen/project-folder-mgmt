@@ -171,6 +171,21 @@ code {
   margin-top: 2px;
 }
 
+/* ─── Project detail layout ─────────────────────────────────────────── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 20px;
+}
+.detail-right {
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 760px) {
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── Card ──────────────────────────────────────────────────────────── */
 .card {
   background: var(--bg-2);

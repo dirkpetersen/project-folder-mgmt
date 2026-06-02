@@ -25,8 +25,10 @@
     {% endif %}
   </div>
 
-  <!-- Project Details (metadata) -->
-  <div class="card mt-6">
+  <div class="detail-grid mt-6">
+
+  <!-- Left column: Project Details (metadata) -->
+  <div class="card detail-left">
     <div class="card-header">
       <h2 class="card-title">Project Details</h2>
       <span class="card-sub">Stored in <code>.project.json</code> (root only)</span>
@@ -63,8 +65,11 @@
     {% endif %}
   </div>
 
+  <!-- Right column: Members (top) then Data Stewards (below) -->
+  <div class="detail-right">
+
   <!-- Project Members -->
-  <div class="card mt-6">
+  <div class="card">
     <div class="card-header">
       <h2 class="card-title">Project Members</h2>
       <span class="card-sub">Group <code>{{ project.primary_group }}</code></span>
@@ -99,7 +104,7 @@
   </div>
 
   <!-- Data Stewards / Project Admins -->
-  <div class="card mt-6">
+  <div class="card mt-4">
     <div class="card-header">
       <h2 class="card-title">Data Stewards</h2>
       <span class="card-sub">
@@ -141,6 +146,9 @@
     </div>
     {% endif %}
   </div>
+
+  </div><!-- /detail-right -->
+  </div><!-- /detail-grid -->
 
   <!-- Subfolders -->
   <div class="section-header mt-8">
