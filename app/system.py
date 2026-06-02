@@ -9,7 +9,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-PROJECTS_BASE = Path("/projects")
+# Project root resolves to ./projects relative to the directory the app is
+# launched from. Override with the PROJECTS_BASE environment variable.
+PROJECTS_BASE = Path(os.environ.get("PROJECTS_BASE", "projects")).resolve()
 GROUP_PREFIX = "grp-"
 
 

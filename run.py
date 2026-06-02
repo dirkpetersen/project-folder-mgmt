@@ -3,7 +3,10 @@
 Entry point. Must run as root.
 
 Usage:
-  sudo python run.py [--create-users] [--remove-users] [--host 0.0.0.0] [--port 8000]
+  sudo ./run.py [--create-users] [--remove-users] [--host 0.0.0.0] [--port 8000]
+
+The project root defaults to ./projects (relative to the launch directory)
+and can be overridden with the PROJECTS_BASE environment variable.
 """
 import argparse
 import os
@@ -23,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     if os.geteuid() != 0:
-        print("ERROR: This application must run as root (sudo python run.py)", file=sys.stderr)
+        print("ERROR: This application must run as root (sudo ./run.py)", file=sys.stderr)
         sys.exit(1)
 
     from app.system import create_test_users, remove_test_users
@@ -38,9 +41,10 @@ def main():
         print(f"Removed {len(removed)} test user(s): {', '.join(removed) or 'none found'}")
         sys.exit(0)
 
-    # Ensure /projects exists
-    from pathlib import Path
-    Path("/projects").mkdir(parents=True, exist_ok=True)
+    # Ensure the project root exists (./projects by default)
+    from app.system import PROJECTS_BASE
+    PROJECTS_BASE.mkdir(parents=True, exist_ok=True)
+    print(f"Project root: {PROJECTS_BASE}")
 
     import uvicorn
     uvicorn.run(

@@ -38,6 +38,8 @@ A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-
 
 This is the part that requires care — it is the whole point of the app. Folders are gated purely by **standard UNIX groups + SetGID bits**, deliberately *no ACLs*, so Samba Access-Based Enumeration (ABE) can hide folders a user can't read. Get these modes exactly right:
 
+The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./projects` resolved relative to the launch directory, overridable via the `PROJECTS_BASE` env var. Paths below are written as `/projects/...` for the canonical Samba deployment, but the app uses the resolved base.
+
 - **Project root** `/projects/<name>`: `chown root:grp-<name>`, `chmod 2750`. Group members can traverse and see contents but not write at the root.
 - **Shared folder** `/projects/<name>/shr`: `chown root:grp-<name>`, `chmod 2770`. Full collaborative read/write for the project group. Created on day one.
 - **Restricted sibling folders** (e.g. `adm`, `mkt`, `samples`) added later: `chown root:grp-<name>-<sibling>`, `chmod 2770`. Each gets its own sub-group; users not in that sub-group cannot even see the folder (ABE).

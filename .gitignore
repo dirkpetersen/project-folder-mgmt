@@ -1,3 +1,6 @@
+# Runtime project root (created at startup)
+/projects/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
