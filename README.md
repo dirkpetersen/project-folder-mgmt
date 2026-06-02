@@ -1,204 +1,209 @@
 # project-folder-mgmt
 
-manage project folders in a posix file system with posix only groups
+**ProjectVault** — a FastAPI web app for self-service management of POSIX project
+folders and their UNIX groups. Investigators and their designees create project
+folders, manage members, and add restricted subfolders through a web UI, without
+ever needing root themselves. The app runs as root and performs the privileged
+`mkdir` / `chown` / `chmod` / group operations on their behalf.
 
-## Scope 
-
-we want a fastapi applicaiton for users to create of project folders and sub folders that are managed with the right permisisons , the setup requires root access which we cannot give to the users so they go to a web app that does it on their behalf, in the simple form the web app will ceate the folder strucnture under /projects and then create unix groups on the local system, the test users will be called apple, banana, strawberry, orange, blueberry, mango, watermelon, pineapple, grape, peach and will be created if not exist (use option --create-users to bootstrap these usera and --remove-users to delete them and remove them from groups 
-
-Web user experience: Can investigator or there designee should go to a website they should see the list of their current projects So matrix that they manage  For this read all the groups based on their read all the project groups based on their Manage by attribute where you can see who manages projects and who has access to mamaging them So we see the list of current proijects Then there's a button to create a new project the project name has to be longer than 10 characters and shorter than 50 characters Replace all spaces in the project names with - and the project name to lower case don't allow any special characters in the project names only letters numbers and hyphens no dots Grinder is a window that shows all the project members This is just a text field with user names and that is, separated Umm if you remove one of them they will be removed from the project  This project also has the ability to create a subroject and there it's the same thing Users a text field with, separated user names that should be members that you can edit and modify It's very simple I want this app to look stunningly beautiful ..... the web app wil run as root on a linux box 
-
-
-### Below is the approach how to manage this manually 
-
-
-Here is the comprehensive, end-to-end blueprint for building a scalable, automated project storage architecture. This plan utilizes standard Linux groups and Samba's Access-Based Enumeration (ABE) without relying on ACLs, ensuring it remains lightning-fast and easy to maintain from 10 projects to 10,000 projects.
+Folder access is gated purely by **standard UNIX groups + SetGID bits** (no ACLs),
+so it stays fast and works cleanly with Samba's Access-Based Enumeration (ABE).
 
 ---
 
-## Phase 1: The Core Foundation (Do This Once)
+## Quickstart
 
-This phase establishes the global settings on your Linux/Samba server. It creates a single, permanent configuration block that never needs to change, no matter how large your storage grows.
+The app must run as **root** (it creates users, groups, and folders). Run these
+from the project directory:
 
-### 1. The Samba Global Layout (`/etc/samba/smb.conf`)
+```bash
+# 1. Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
 
-Open your Samba configuration file and add the following share block.
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Bootstrap the 10 test users (apple, banana, ...)
+sudo ./run.py --create-users
+# → Created 10 test user(s): apple, banana, strawberry, orange, blueberry,
+#   mango, watermelon, pineapple, grape, peach
+
+# 4. Start the app
+sudo ./run.py --host 127.0.0.1 --port 8080
+```
+
+Then open <http://127.0.0.1:8080> and log in.
+
+> **Note on `sudo` + venv:** if `sudo` resets your `PATH`, run the venv's
+> interpreter explicitly so it uses the installed packages:
+> `sudo .venv/bin/python run.py --host 127.0.0.1 --port 8080`
+
+### Logging in
+
+There is no password — just a username. Valid logins are any **existing Linux
+account**, which after step 3 means the ten test users:
+
+```
+apple   banana   strawberry   orange   blueberry
+mango   watermelon   pineapple   grape   peach
+```
+
+When you're done testing, remove the users and their groups:
+
+```bash
+sudo ./run.py --remove-users
+```
+
+---
+
+## Commands
+
+```bash
+sudo ./run.py                              # serve on 0.0.0.0:8000 (default)
+sudo ./run.py --host 127.0.0.1 --port 8080 # custom bind address
+sudo ./run.py --reload                     # dev mode with auto-reload
+sudo ./run.py --create-users               # bootstrap the test users and exit
+sudo ./run.py --remove-users               # delete the test users and exit
+```
+
+### Configuration
+
+| Setting         | Default      | Notes                                                       |
+| --------------- | ------------ | ----------------------------------------------------------- |
+| `PROJECTS_BASE` | `./projects` | Project root, resolved from the launch directory. See below. |
+
+The project root defaults to `./projects` (created at startup) for easy local
+testing. For a real Samba deployment, point it at the share path:
+
+```bash
+sudo PROJECTS_BASE=/projects ./run.py
+```
+
+---
+
+## How it works
+
+### What you can do in the UI
+
+- **Dashboard** — an access matrix of every project: members, managers, and
+  subfolders.
+- **Create a project** — name must be **11–49 characters**, lowercase, with
+  spaces turned into hyphens and only letters, numbers, and hyphens allowed
+  (no dots or other special characters). You are automatically added as a member.
+- **Manage members** — a comma-separated text field of usernames. Removing a name
+  removes that user from the project.
+- **Restricted subfolders** — add siblings (e.g. `adm`, `mkt`, `samples`), each
+  with its own member list. Users not in a subfolder's group can't even see it.
+
+### Who can manage a project
+
+A project may be managed by **all members of `grp-<name>`** — *unless* a
+`grp-<name>-adm` subgroup exists. The presence of `-adm` marks the project as
+sensitive, and management is then restricted to members of `grp-<name>-adm`.
+This is computed from group membership alone; there is no separate data store.
+
+### The permission model
+
+| Path                         | Owner / group              | Mode   | Effect                                                       |
+| ---------------------------- | -------------------------- | ------ | ------------------------------------------------------------ |
+| `/projects/<name>`           | `root:grp-<name>`          | `2750` | Group can traverse and read; no write at the root.           |
+| `/projects/<name>/shr`       | `root:grp-<name>`          | `2770` | Full collaborative read/write. Created on day one.           |
+| `/projects/<name>/<sibling>` | `root:grp-<name>-<sibling>`| `2770` | Restricted; invisible (via ABE) to users outside its group.  |
+
+The `2` prefix (SetGID) is mandatory on every folder so new files inherit the
+group. Adding a sibling **never** touches the root or `shr` — siblings are
+deployed side-by-side.
+
+### Project layout
+
+| File                  | Role                                                              |
+| --------------------- | ---------------------------------------------------------------- |
+| `run.py`              | Entry point: root check, `--create-users`/`--remove-users`, server. |
+| `app/system.py`       | Privileged ops: `groupadd`, `useradd`, `chown`, `chmod`, etc.    |
+| `app/projects.py`     | Read-only discovery of projects from the filesystem + name validation. |
+| `app/main.py`         | FastAPI routes: login, dashboard, projects, subfolders.          |
+| `app/templates/`      | Jinja2 templates.                                                |
+| `app/static/css/`     | Styles.                                                          |
+
+---
+
+## Samba deployment blueprint
+
+The web app automates the standard provisioning below. This section is the
+reference architecture for serving `/projects` over Samba at scale (10 to 10,000
+projects) using standard Linux groups and Access-Based Enumeration (ABE), without
+relying on ACLs.
+
+### Phase 1: Samba global layout (do this once)
+
+Add this share block to `/etc/samba/smb.conf`:
 
 ```ini
 [Projects]
     path = /projects
     writable = yes
     browsable = yes
-    
-    # Enable Access-Based Enumeration (Hides folders users can't read)
+
+    # Enable Access-Based Enumeration (hides folders users can't read)
     access-based share enum = yes
-    
+
     # Enforce standard UNIX permission inheritance via SetGID
     inherit permissions = yes
     inherit owner = yes
-    
-    # Ensure newly created network files/folders maintain clean 770/660 mapping
+
+    # Keep newly created network files/folders at clean 770/660
     directory mask = 0770
     create mask = 0660
-
 ```
 
-*Run `sudo systemctl reload smbd` to apply.*
+Apply with `sudo systemctl reload smbd`.
 
----
+### Phase 2: Day-one project (root + shared folder)
 
-## Phase 2: Starting Small (The "Day One" Blueprint)
-
-When a project is brand new, it is simple. It only needs the root folder and the open collaboration folder (`/shr`).
-
-### The Identity Setup (LDAP, Active Directory, or Local Linux)
-
-Create **one** master group for the project and add all project members to it:
-
-* Group Name: `grp-banana`
-
-### The Directory Provisioning
-
-Run these commands to build the initial structure (or put them into a basic script):
+Create one master group and add all members to it (e.g. `grp-banana`), then:
 
 ```bash
-# 1. Create the directories
 mkdir -p /projects/banana/shr
 
-# 2. Configure the Project Root
-# Owned by root, group-owned by the project team.
+# Project root: group can enter/read, others locked out
 chown root:grp-banana /projects/banana
-# 2750 = Owners can modify; Project Group can entry/read (r-x); Others are locked out (---)
 chmod 2750 /projects/banana
 
-# 3. Configure the Standard Share Folder (/shr)
-# Group-owned by the project team.
+# Shared folder: group gets full rwx + SetGID inheritance
 chown root:grp-banana /projects/banana/shr
-# 2770 = Project Group gets full read/write/execute (rwx) + SetGID inheritance bit
 chmod 2770 /projects/banana/shr
-
 ```
 
-### The Result on Day One:
+Result: everyone in `grp-banana` sees `/projects/banana` and can collaborate in
+`/shr`.
 
-* Everyone in `grp-banana` can see the `/projects/banana` folder.
-* Inside it, they see `/shr` and have full read/write rights to collaborate.
-* Network visibility is clean, and paths are compact.
+### Phase 3: Growing complex (restricted siblings)
 
----
-
-## Phase 3: Growing Complex (The "Add-On" Blueprint)
-
-Six months later, the project expands. The team requests a restricted management folder (`/adm`) and a samples folder (`/samples`) that standard users shouldn't even know exist.
-
-**Crucial Rule:** You do *not* touch the root folder or the existing `/shr` folder. You leave them completely alone.
-
-### The Identity Upgrade
-
-Create specialized sub-groups for the specific restricted areas, and assign only the privileged users to them:
-
-* Group Name: `grp-banana-adm` (Managers)
-* Group Name: `grp-banana-samples` (Samples Team)
-
-### The Sibling Provisioning
-
-Run these commands to deploy the new complex folders side-by-side with `/shr`:
+Later, a team needs a restricted `adm` folder and a `mkt` folder. **Do not touch
+the root or `/shr`.** Create dedicated sub-groups and deploy siblings alongside:
 
 ```bash
-# 1. Create the new sibling folders
-mkdir -p /projects/banana/adm
-mkdir -p /projects/banana/mkt
+mkdir -p /projects/banana/adm /projects/banana/mkt
 
-# 2. Configure the Admin Folder
 chown root:grp-banana-adm /projects/banana/adm
 chmod 2770 /projects/banana/adm
 
-# 3. Configure the Marketing Folder
 chown root:grp-banana-mkt /projects/banana/mkt
 chmod 2770 /projects/banana/mkt
-
 ```
 
-### The Result of Growing Complex:
+ABE evaluates the UNIX permissions on the fly:
 
-Samba’s ABE automatically evaluates the local UNIX permissions on the fly.
+- Standard users (only in `grp-banana`) see **only** `/shr`; `/adm` and `/mkt`
+  are invisible.
+- Managers (also in `grp-banana-adm`) additionally see `/adm`.
+- Marketing users (also in `grp-banana-mkt`) additionally see `/mkt`.
 
-* **Standard Users** (only in `grp-banana`) open the project and see **only** `/shr`. To them, `/adm` and `/mkt` are completely invisible.
-* **Managers** (in `grp-banana` and `grp-banana-adm`) open the project and see both `/shr` and `/adm`.
-* **Marketing Users** (in `grp-banana` and `grp-banana-mkt`) open the project and see both `/shr` and `/mkt`.
+### Why this scales
 
----
-
-## Phase 4: Scaling to Thousands (Automation Script)
-
-Because your `smb.conf` is static and the logic is entirely embedded in standard directory permissions, you can automate project creation completely.
-
-Below is an enterprise-grade Bash script (`create_project.sh`) that you can run manually, hook into a web portal, or trigger via an API whenever a new project is approved.
-
-```bash
-#!/bin/bash
-
-# Usage: ./create_project.sh [project_name] [primary_group]
-# Example: ./create_project.sh apple grp-apple
-
-PROJECT_NAME=$1
-PRIMARY_GROUP=$2
-BASE_PATH="/projects/$PROJECT_NAME"
-
-if [ -z "$PROJECT_NAME" ] || [ -z "$PRIMARY_GROUP" ]; then
-    echo "Usage: $0 [project_name] [primary_group]"
-    exit 1
-fi
-
-echo "Provisioning project: $PROJECT_NAME..."
-
-# 1. Create the fundamental directories
-mkdir -p "$BASE_PATH/shr"
-
-# 2. Apply permissions to the Root Gatekeeper (Read-Only to group)
-chown root:"$PRIMARY_GROUP" "$BASE_PATH"
-chmod 2750 "$BASE_PATH"
-
-# 3. Apply Full Write permissions to the /shr folder
-chown root:"$PRIMARY_GROUP" "$BASE_PATH/shr"
-chmod 2770 "$BASE_PATH/shr"
-
-echo "Success! Project $PROJECT_NAME is active."
-echo "Root path: $BASE_PATH (chmod 2750)"
-echo "Shared path: $BASE_PATH/shr (chmod 2770)"
-
-```
-
-### To add a complex sibling later, use this secondary automation script (`add_sibling.sh`):
-
-```bash
-#!/bin/bash
-
-# Usage: ./add_sibling.sh [project_name] [folder_name] [target_group]
-# Example: ./add_sibling.sh banana adm grp-banana-adm
-
-PROJECT_NAME=$1
-FOLDER_NAME=$2
-TARGET_GROUP=$3
-TARGET_PATH="/projects/$PROJECT_NAME/$FOLDER_NAME"
-
-if [ -z "$PROJECT_NAME" ] || [ -z "$FOLDER_NAME" ] || [ -z "$TARGET_GROUP" ]; then
-    echo "Usage: $0 [project_name] [folder_name] [target_group]"
-    exit 1
-fi
-
-echo "Adding restricted sibling '$FOLDER_NAME' to project '$PROJECT_NAME'..."
-
-mkdir -p "$TARGET_PATH"
-chown root:"$TARGET_GROUP" "$TARGET_PATH"
-chmod 2770 "$TARGET_PATH"
-
-echo "Success! Restricted sibling folder is live and managed by ABE."
-
-```
-
-### Why this plan works at massive scale:
-
-1. **Zero Configuration Bloat:** Your `smb.conf` stays tiny forever.
-2. **Instant Performance:** Linux group evaluation (`770`/`2750`) happens at the kernel layer, making file browsing insanely fast even with tens of thousands of users.
-3. **Short Paths:** Using 3-letter structures (`/shr`, `/adm`, `/mkt`) prevents remote Windows and Mac clients from breaking over deep file structures. 
+1. **Zero config bloat** — `smb.conf` stays tiny forever.
+2. **Instant performance** — Linux group evaluation happens in the kernel, so
+   browsing is fast even with tens of thousands of users.
+3. **Short paths** — three-letter folders (`/shr`, `/adm`, `/mkt`) keep paths
+   compact for Windows and Mac clients.
