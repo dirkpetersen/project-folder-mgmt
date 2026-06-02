@@ -5,18 +5,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Install dependencies
+# Set up a virtual environment (do this once)
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run the app (must be root)
-sudo python run.py                        # default: 0.0.0.0:8000
-sudo python run.py --host 127.0.0.1 --port 8080
-sudo python run.py --reload               # dev mode with auto-reload
+# Run the app (must be root — preserve the venv's Python)
+sudo .venv/bin/python run.py                        # default: 0.0.0.0:8000
+sudo .venv/bin/python run.py --host 127.0.0.1 --port 8080
+sudo .venv/bin/python run.py --reload               # dev mode with auto-reload
 
 # Bootstrap / remove test users
-sudo python run.py --create-users
-sudo python run.py --remove-users
+sudo .venv/bin/python run.py --create-users
+sudo .venv/bin/python run.py --remove-users
 ```
+
+> Use `.venv/bin/python` with `sudo` rather than `sudo python` so the venv packages are used instead of the system Python.
 
 ## What this builds
 
