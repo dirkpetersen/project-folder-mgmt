@@ -257,14 +257,15 @@ async def do_delete_project(request: Request, project_name: str):
 async def do_create_subfolder(
     request: Request,
     project_name: str,
-    folder_name: Annotated[str, Form()],
+    folder_name: Annotated[str, Form()] = "",
     members: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
     try:
         clean_folder = validate_subfolder_name(folder_name)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError:
+        # Empty or invalid name (e.g. saved with a blank field): just go back.
+        return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
     create_subfolder(project_name, clean_folder, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
