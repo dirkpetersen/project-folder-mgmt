@@ -62,6 +62,7 @@ class Project:
     pi_lead: str = ""           # from .project.json
     description: str = ""       # from .project.json
     cost_id: str = ""           # from .project.json
+    public: bool = False        # from .project.json; visible to everyone if true
     subfolders: list[Subfolder] = field(default_factory=list)
 
     @property
@@ -73,6 +74,10 @@ class Project:
 
     def is_manager(self, username: str) -> bool:
         return username in self.managers
+
+    def is_visible_to(self, username: str) -> bool:
+        """A project is visible to its members, or to anyone if public."""
+        return self.public or username in self.members
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +127,7 @@ def get_project(project_name: str) -> Project | None:
         pi_lead=meta.get("pi_lead", ""),
         description=meta.get("description", ""),
         cost_id=meta.get("cost_id", ""),
+        public=meta.get("public", False),
         subfolders=_subfolders_for(project_name),
     )
 
@@ -149,3 +155,8 @@ def list_projects() -> list[Project]:
 def projects_for_user(username: str) -> list[Project]:
     """Return projects where the user is a member of the primary group."""
     return [p for p in list_projects() if username in p.members]
+
+
+def projects_visible_to(username: str) -> list[Project]:
+    """Return projects the user may see: their own, plus any public project."""
+    return [p for p in list_projects() if p.is_visible_to(username)]

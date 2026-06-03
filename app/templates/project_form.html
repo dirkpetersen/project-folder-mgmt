@@ -79,6 +79,17 @@
         <p class="field-hint">Comma-separated usernames. You are always included.</p>
       </div>
 
+      <div class="field">
+        <label class="checkbox-field">
+          <input type="checkbox" name="public" value="1"
+                 {% if form.get('public') %}checked{% endif %} />
+          <span>
+            <strong>Public</strong> — visible to everyone on the dashboard.
+            When off, only members can see this project.
+          </span>
+        </label>
+      </div>
+
       <div class="form-actions">
         <a href="/" class="btn btn-ghost">Cancel</a>
         <button type="submit" class="btn btn-primary">Create Project</button>

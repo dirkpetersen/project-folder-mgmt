@@ -11,8 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.projects import (
     get_project,
-    list_projects,
-    projects_for_user,
+    projects_visible_to,
     validate_project_name,
     validate_subfolder_name,
 )
@@ -113,12 +112,10 @@ async def dashboard(request: Request):
     username = current_user(request)
     if not username:
         return RedirectResponse(url="/login", status_code=303)
-    my_projects = projects_for_user(username)
-    all_projects = list_projects()
+    visible_projects = projects_visible_to(username)
     return templates.TemplateResponse(request, "dashboard.html", {
         "username": username,
-        "my_projects": my_projects,
-        "all_projects": all_projects,
+        "visible_projects": visible_projects,
     })
 
 
@@ -144,11 +141,14 @@ async def do_create_project(
     pi_lead: Annotated[str, Form()] = "",
     description: Annotated[str, Form()] = "",
     cost_id: Annotated[str, Form()] = "",
+    public: Annotated[str, Form()] = "",
 ):
     username = require_user(request)
+    is_public = bool(public)
     form = {
         "name": name, "members": members,
         "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "public": is_public,
     }
     try:
         clean_name = validate_project_name(name)
@@ -171,6 +171,7 @@ async def do_create_project(
         member_list.insert(0, username)
     create_project(clean_name, member_list, {
         "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "public": is_public,
     })
     return RedirectResponse(url=f"/projects/{clean_name}", status_code=303)
 
@@ -183,7 +184,8 @@ async def do_create_project(
 async def project_detail(request: Request, project_name: str):
     username = require_user(request)
     project = get_project(project_name)
-    if not project:
+    # Hide existence from users who can't see it: return 404 unless visible.
+    if not project or not project.is_visible_to(username):
         raise HTTPException(status_code=404, detail="Project not found.")
     can_manage = project.is_manager(username)
     return templates.TemplateResponse(request, "project_detail.html", {
@@ -222,10 +224,12 @@ async def update_metadata(
     pi_lead: Annotated[str, Form()] = "",
     description: Annotated[str, Form()] = "",
     cost_id: Annotated[str, Form()] = "",
+    public: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
     write_metadata(project_name, {
         "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "public": bool(public),
     })
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 

@@ -307,6 +307,11 @@ code {
   border: 1px solid rgba(239,68,68,0.3);
   color: #fca5a5;
 }
+.badge-public {
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: #86efac;
+}
 
 /* ─── Buttons ───────────────────────────────────────────────────────── */
 .btn {
@@ -402,6 +407,25 @@ code {
   color: var(--text-3);
   margin-top: 5px;
 }
+
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.checkbox-field input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.checkbox-field strong { color: var(--text); }
 
 .field-inline {
   display: flex;

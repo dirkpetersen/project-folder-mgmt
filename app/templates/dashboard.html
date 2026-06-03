@@ -13,11 +13,12 @@
     </a>
   </div>
 
-  <!-- matrix: all projects showing who manages / who is member -->
-  {% if all_projects %}
+  <!-- matrix: projects the user can see (their own, plus any public project) -->
+  {% if visible_projects %}
   <div class="card mt-6">
     <div class="card-header">
       <h2 class="card-title">Access Matrix</h2>
+      <span class="card-sub">Your projects, plus any marked public</span>
     </div>
     <div class="table-wrap">
       <table class="matrix-table">
@@ -32,10 +33,11 @@
           </tr>
         </thead>
         <tbody>
-          {% for p in all_projects %}
+          {% for p in visible_projects %}
           <tr class="{% if username in p.members %}row-mine{% endif %}">
             <td>
               <a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a>
+              {% if p.public %}<span class="badge badge-public">public</span>{% endif %}
               {% if p.adm_group %}<span class="badge badge-sensitive">sensitive</span>{% endif %}
               {% if p.cost_id %}<div class="cell-sub">{{ p.cost_id }}</div>{% endif %}
             </td>
@@ -64,9 +66,7 @@
               {% endif %}
             </td>
             <td>
-              {% if username in p.members %}
               <a href="/projects/{{ p.name }}" class="btn btn-sm btn-ghost">View</a>
-              {% endif %}
             </td>
           </tr>
           {% endfor %}

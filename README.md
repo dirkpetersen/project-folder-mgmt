@@ -86,14 +86,17 @@ sudo PROJECTS_BASE=/projects ./run.py
 
 ### What you can do in the UI
 
-- **Dashboard** — an access matrix of every project: members, managers, and
-  subfolders.
+- **Dashboard** — an access matrix of the projects you can see: your own, plus
+  any project marked public. Shows members, managers, and subfolders.
 - **Create a project** — name must be **11–49 characters**, lowercase, with
   spaces turned into hyphens and only letters, numbers, and hyphens allowed
   (no dots or other special characters). You are automatically added as a member.
-- **Project details** — PI / Lead, description, and cost ID, stored in a
-  `.project.json` file at the project root that is readable by root only
-  (`chmod 0600`). Editable by managers.
+- **Project details** — PI / Lead, description, cost ID, and a **public** flag,
+  stored in a `.project.json` file at the project root that is readable by root
+  only (`chmod 0600`). Editable by managers.
+- **Visibility** — by default a project is visible only to its members. Tick the
+  **public** checkbox to make it visible (read-only) to everyone; it remains
+  manageable only by its managers/stewards.
 - **Manage members** — a comma-separated text field of usernames. Removing a name
   removes that user from the project.
 - **Data stewards** — a comma-separated field of project admins. If anyone is

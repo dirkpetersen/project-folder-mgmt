@@ -17,7 +17,7 @@ GROUP_PREFIX = "grp-"
 
 # Per-project metadata file, stored at the project root. Readable by root only.
 METADATA_FILE = ".project.json"
-METADATA_FIELDS = ("pi_lead", "description", "cost_id")
+METADATA_FIELDS = ("pi_lead", "description", "cost_id")  # free-text fields
 
 
 # ---------------------------------------------------------------------------
@@ -99,19 +99,22 @@ def _provision_dir(path: Path, group_name: str, mode: int) -> None:
 
 
 def read_metadata(project_name: str) -> dict:
-    """Read .project.json from the project root. Returns {} if absent/invalid."""
+    """Read .project.json from the project root. Returns defaults if absent/invalid."""
     path = PROJECTS_BASE / project_name / METADATA_FILE
     try:
         data = json.loads(path.read_text())
     except (FileNotFoundError, ValueError):
-        return {}
-    return {k: str(data.get(k, "")) for k in METADATA_FIELDS}
+        data = {}
+    meta = {k: str(data.get(k, "")) for k in METADATA_FIELDS}
+    meta["public"] = bool(data.get("public", False))
+    return meta
 
 
 def write_metadata(project_name: str, metadata: dict) -> None:
     """Write .project.json at the project root, owned by root and mode 0600."""
     path = PROJECTS_BASE / project_name / METADATA_FILE
     data = {k: str(metadata.get(k, "")).strip() for k in METADATA_FIELDS}
+    data["public"] = bool(metadata.get("public", False))
     path.write_text(json.dumps(data, indent=2))
     os.chown(path, 0, 0)
     os.chmod(path, 0o600)

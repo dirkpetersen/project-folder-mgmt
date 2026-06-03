@@ -54,7 +54,11 @@ Group naming convention: primary group `grp-<project>`; restricted sub-groups `g
 
 ## Project metadata
 
-Each project stores extra fields (`pi_lead`, `description`, `cost_id`) in a `.project.json` file at its root, written `chown root:root` / `chmod 0600` so **only root can read it** — it is not exposed via the project group. Defined by `METADATA_FILE`/`METADATA_FIELDS` and `read_metadata`/`write_metadata` in `app/system.py`; surfaced on the `Project` dataclass and editable by managers via `POST /projects/<name>/metadata`. Reads tolerate a missing or malformed file by returning empty values.
+Each project stores extra fields in a `.project.json` file at its root, written `chown root:root` / `chmod 0600` so **only root can read it** — it is not exposed via the project group. The free-text fields (`pi_lead`, `description`, `cost_id`) are listed in `METADATA_FIELDS`; there is also a boolean `public` flag handled separately in `read_metadata`/`write_metadata` (`app/system.py`). All are surfaced on the `Project` dataclass and editable by managers via `POST /projects/<name>/metadata`. Reads tolerate a missing or malformed file by returning defaults (empty strings, `public=False`).
+
+## Visibility
+
+A project is visible to a user only if they are a member, **or** the project is `public`. This is `Project.is_visible_to()`; the dashboard lists `projects_visible_to(username)` and the detail route returns **404** (not 403) for non-visible projects so their existence stays hidden. Public projects are visible (read-only) to everyone but still only manageable by their managers/stewards. Marking a project public is a checkbox in the create form and the Project Details editor.
 
 ## Project naming rules (validate on creation)
 
