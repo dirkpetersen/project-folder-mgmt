@@ -4,16 +4,16 @@
     <style>
       .bg        { fill:#0d0f14; }
       .panel     { fill:#13161e; stroke:#252a38; stroke-width:1.5; }
-      .title     { fill:#e2e8f0; font-size:15px; font-weight:700; font-family:'Inter',sans-serif; }
-      .subtitle  { fill:#64748b; font-size:11px; font-family:'Inter',sans-serif; }
+      .title     { fill:#e2e8f0; font-size:18px; font-weight:700; font-family:'Inter',sans-serif; }
+      .subtitle  { fill:#64748b; font-size:13px; font-family:'Inter',sans-serif; }
       .dir       { fill:#1c202c; stroke:#2e3447; stroke-width:1.5; }
-      .dir-label { fill:#e2e8f0; font-size:13px; }
-      .own       { fill:#94a3b8; font-size:11px; }
-      .m2750     { fill:#fcd34d; font-size:11px; font-weight:600; }
-      .m2770     { fill:#86efac; font-size:11px; font-weight:600; }
-      .m0600     { fill:#fca5a5; font-size:11px; font-weight:600; }
-      .grp       { fill:#c4b5fd; font-size:12px; font-weight:600; }
-      .note      { fill:#94a3b8; font-size:11px; font-family:'Inter',sans-serif; }
+      .dir-label { fill:#e2e8f0; font-size:15px; }
+      .own       { fill:#94a3b8; font-size:13px; }
+      .m2750     { fill:#fcd34d; font-size:13px; font-weight:600; }
+      .m2770     { fill:#86efac; font-size:13px; font-weight:600; }
+      .m0600     { fill:#fca5a5; font-size:13px; font-weight:600; }
+      .grp       { fill:#c4b5fd; font-size:14px; font-weight:600; }
+      .note      { fill:#94a3b8; font-size:13px; font-family:'Inter',sans-serif; }
     </style>
   </defs>
 
@@ -48,7 +48,7 @@
   <text x="56" y="431" class="note">all members manage · no extra groups needed</text>
 
   <rect x="38" y="462" width="404" height="92" rx="7" fill="#0d1a10" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="56" y="483" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">✦  Designed to grow</text>
+  <text x="56" y="483" fill="#86efac" font-size="14" font-weight="600" font-family="'Inter',sans-serif">✦  Designed to grow</text>
   <text x="56" y="503" class="note">One group suffices for most projects.</text>
   <text x="56" y="522" class="note">Add an -adm group (②) or a restricted</text>
   <text x="56" y="541" class="note">subfolder (③) later — without touching</text>
@@ -82,7 +82,7 @@
   <text x="534" y="350" class="m2770">chmod 2770  →  drwxrws--- + setgid</text>
 
   <rect x="498" y="376" width="404" height="28" rx="5" fill="#1c1008" stroke="#f59e0b" stroke-width="1"/>
-  <text x="516" y="394" fill="#fcd34d" font-size="11" font-family="'Inter',sans-serif">⚠  ABE: adm/ is invisible to plain members</text>
+  <text x="516" y="394" fill="#fcd34d" font-size="13" font-family="'Inter',sans-serif">⚠  ABE: adm/ is invisible to plain members</text>
 
   <rect x="498" y="418" width="404" height="58" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
   <text x="516" y="438" class="grp">🔑  grp-myproject</text>
@@ -90,7 +90,7 @@
   <text x="516" y="471" class="note">management delegated to -adm group</text>
 
   <rect x="498" y="488" width="404" height="58" rx="7" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
-  <text x="516" y="508" fill="#d8b4fe" font-size="12" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-adm  (data stewards)</text>
+  <text x="516" y="508" fill="#d8b4fe" font-size="14" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-adm  (data stewards)</text>
   <text x="516" y="527" class="note">designated stewards · manage the project</text>
   <text x="516" y="541" class="note">can see and write to adm/</text>
 
@@ -129,18 +129,18 @@
   <text x="994" y="390" class="m2770">chmod 2770  →  drwxrws--- + setgid</text>
 
   <rect x="958" y="408" width="404" height="28" rx="5" fill="#1c1008" stroke="#f59e0b" stroke-width="1"/>
-  <text x="976" y="426" fill="#fcd34d" font-size="11" font-family="'Inter',sans-serif">⚠  ABE: adm/ + samples/ hidden from non-members</text>
+  <text x="976" y="426" fill="#fcd34d" font-size="13" font-family="'Inter',sans-serif">⚠  ABE: adm/ + samples/ hidden from non-members</text>
 
   <rect x="958" y="448" width="404" height="52" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
   <text x="976" y="468" class="grp">🔑  grp-myproject</text>
   <text x="976" y="487" class="note">all members · access shr/ · mgmt → -adm</text>
 
   <rect x="958" y="510" width="404" height="52" rx="7" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
-  <text x="976" y="530" fill="#d8b4fe" font-size="12" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-adm  (data stewards)</text>
+  <text x="976" y="530" fill="#d8b4fe" font-size="14" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-adm  (data stewards)</text>
   <text x="976" y="549" class="note">manage project · see adm/ (ABE hides it)</text>
 
   <rect x="958" y="572" width="404" height="52" rx="7" fill="#0a1a0e" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="976" y="592" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-samples</text>
+  <text x="976" y="592" fill="#86efac" font-size="14" font-weight="600" font-family="'Inter',sans-serif">🔑  grp-myproject-samples</text>
   <text x="976" y="611" class="note">samples team · see samples/ (ABE hides it)</text>
 
   <rect x="958" y="634" width="404" height="76" rx="7" fill="#0f1318" stroke="#252a38" stroke-width="1"/>
@@ -162,28 +162,28 @@
   <rect x="40" y="824" width="14" height="14" rx="3" fill="#fca5a5" opacity="0.85"/>
   <text x="64" y="836" class="own">0600  =  owner rw  · group ---  · others ---             →   root-only: metadata file never exposed to the project group</text>
 
-  <text x="40" y="853" fill="#818cf8" font-size="11" font-family="'Inter',sans-serif">setgid (the leading 2) is mandatory on every directory — new files inherit the directory's group, not the creator's primary group.</text>
+  <text x="40" y="853" fill="#818cf8" font-size="13" font-family="'Inter',sans-serif">setgid (the leading 2) is mandatory on every directory — new files inherit the directory's group, not the creator's primary group.</text>
 
   <!-- ════════════ Growth path (full width) ════════════ -->
   <rect x="20" y="872" width="1360" height="118" rx="10" class="panel"/>
   <text x="40" y="898" class="title">Complexity grows on demand — no retrofitting required</text>
 
   <rect x="40" y="912" width="386" height="62" rx="7" fill="#0d1a10" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="56" y="933" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">①  one group</text>
+  <text x="56" y="933" fill="#86efac" font-size="14" font-weight="600" font-family="'Inter',sans-serif">①  one group</text>
   <text x="56" y="952" class="note">root + shr/  ·  covers ~80% of projects</text>
   <text x="56" y="969" class="note">all members manage</text>
 
   <text x="438" y="947" fill="#475569" font-size="24">→</text>
 
   <rect x="470" y="912" width="420" height="62" rx="7" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
-  <text x="486" y="933" fill="#d8b4fe" font-size="12" font-weight="600" font-family="'Inter',sans-serif">②  + -adm group</text>
+  <text x="486" y="933" fill="#d8b4fe" font-size="14" font-weight="600" font-family="'Inter',sans-serif">②  + -adm group</text>
   <text x="486" y="952" class="note">add data stewards  ·  project turns sensitive</text>
   <text x="486" y="969" class="note">existing shr/ left untouched</text>
 
   <text x="902" y="947" fill="#475569" font-size="24">→</text>
 
   <rect x="934" y="912" width="446" height="62" rx="7" fill="#0c1a12" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="950" y="933" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">③  + per-subfolder groups</text>
+  <text x="950" y="933" fill="#86efac" font-size="14" font-weight="600" font-family="'Inter',sans-serif">③  + per-subfolder groups</text>
   <text x="950" y="952" class="note">restricted sibling folders  ·  each with its own group</text>
   <text x="950" y="969" class="note">existing folders always left untouched</text>
 </svg>
