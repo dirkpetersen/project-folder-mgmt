@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1400 1020" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono', 'Fira Code', monospace" font-size="13">
+<svg width="1400" height="1070" viewBox="0 0 1400 1070" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono', 'Fira Code', monospace" font-size="13">
   <defs>
     <style>
       .bg         { fill: #0d0f14; }
@@ -211,43 +211,42 @@
        BOTTOM ROW — Key + growth path
   ═══════════════════════════════════════════════════ -->
 
-  <!-- Key panel -->
-  <rect x="20" y="642" width="880" height="120" rx="10" class="panel"/>
-  <text x="40" y="666" class="title">Permission Key</text>
+  <!-- Key panel (full width, below all three columns) -->
+  <rect x="20" y="800" width="1360" height="128" rx="10" class="panel"/>
+  <text x="40" y="826" class="title">Permission Key</text>
 
-  <rect x="40" y="678" width="14" height="14" rx="3" fill="#fcd34d" opacity="0.8"/>
-  <text x="60" y="690" class="own">2750  =  owner rwx · group r-x · others ---  + setgid  →  gatekeeper root: group can enter and read, but not write here</text>
+  <rect x="40" y="840" width="14" height="14" rx="3" fill="#fcd34d" opacity="0.8"/>
+  <text x="64" y="852" class="own">2750  =  owner rwx · group r-x · others ---  + setgid   →   gatekeeper root: group can enter and read, but not write here</text>
 
-  <rect x="40" y="700" width="14" height="14" rx="3" fill="#86efac" opacity="0.8"/>
-  <text x="60" y="712" class="own">2770  =  owner rwx · group rwx · others ---  + setgid  →  full collaboration: group can read, write, and new files inherit group</text>
+  <rect x="40" y="864" width="14" height="14" rx="3" fill="#86efac" opacity="0.8"/>
+  <text x="64" y="876" class="own">2770  =  owner rwx · group rwx · others ---  + setgid   →   full collaboration: group can read, write, and new files inherit group</text>
 
-  <rect x="40" y="722" width="14" height="14" rx="3" fill="#fca5a5" opacity="0.8"/>
-  <text x="60" y="734" class="own">0600  =  owner rw  · group ---  · others ---            →  root-only: metadata file never exposed to project group or members</text>
+  <rect x="40" y="888" width="14" height="14" rx="3" fill="#fca5a5" opacity="0.8"/>
+  <text x="64" y="900" class="own">0600  =  owner rw  · group ---  · others ---             →   root-only: metadata file never exposed to project group or members</text>
 
-  <text x="40" y="754" fill="#6366f1" font-size="11" font-family="'Inter',sans-serif">setgid (the leading 2) is mandatory on every directory — new files and subdirectories inherit the parent directory's group, not the creator's primary group</text>
+  <text x="40" y="920" fill="#6366f1" font-size="11" font-family="'Inter',sans-serif">setgid (the leading 2) is mandatory on every directory — new files and subdirectories inherit the parent directory's group, not the creator's primary group</text>
 
-  <!-- Growth path panel -->
-  <rect x="20" y="778" width="880" height="110" rx="10" class="panel"/>
-  <text x="40" y="802" class="title">Complexity grows on demand — no retrofitting required</text>
+  <!-- Growth path panel (full width) -->
+  <rect x="20" y="942" width="1360" height="108" rx="10" class="panel"/>
+  <text x="40" y="968" class="title">Complexity grows on demand — no retrofitting required</text>
 
-  <!-- boxes -->
-  <rect x="40" y="816" width="220" height="52" rx="6" fill="#0d1a10" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="52" y="836" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">① 1 group</text>
-  <text x="52" y="854" class="note">root + shr/   ·   ~80% of projects</text>
-  <text x="52" y="868" class="note">all members manage</text>
+  <rect x="40" y="982" width="380" height="56" rx="6" fill="#0d1a10" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="54" y="1002" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">① 1 group</text>
+  <text x="54" y="1020" class="note">root + shr/   ·   covers ~80% of projects</text>
+  <text x="54" y="1035" class="note">all members manage</text>
 
-  <text x="274" y="847" fill="#2e3447" font-size="20">→</text>
+  <text x="436" y="1014" fill="#2e3447" font-size="22">→</text>
 
-  <rect x="300" y="816" width="250" height="52" rx="6" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
-  <text x="314" y="836" fill="#d8b4fe" font-size="12" font-weight="600" font-family="'Inter',sans-serif">② + -adm group</text>
-  <text x="314" y="854" class="note">add stewards   ·   project turns sensitive</text>
-  <text x="314" y="868" class="note">existing shr/ untouched</text>
+  <rect x="466" y="982" width="420" height="56" rx="6" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="480" y="1002" fill="#d8b4fe" font-size="12" font-weight="600" font-family="'Inter',sans-serif">② + -adm group</text>
+  <text x="480" y="1020" class="note">add data stewards   ·   project turns sensitive</text>
+  <text x="480" y="1035" class="note">existing shr/ left untouched</text>
 
-  <text x="564" y="847" fill="#2e3447" font-size="20">→</text>
+  <text x="902" y="1014" fill="#2e3447" font-size="22">→</text>
 
-  <rect x="590" y="816" width="290" height="52" rx="6" fill="#0c1a12" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="606" y="836" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">③ + per-subfolder groups</text>
-  <text x="606" y="854" class="note">restricted sibling folders   ·   each with its own group</text>
-  <text x="606" y="868" class="note">existing folders always untouched</text>
+  <rect x="932" y="982" width="448" height="56" rx="6" fill="#0c1a12" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="946" y="1002" fill="#86efac" font-size="12" font-weight="600" font-family="'Inter',sans-serif">③ + per-subfolder groups</text>
+  <text x="946" y="1020" class="note">restricted sibling folders   ·   each with its own group</text>
+  <text x="946" y="1035" class="note">existing folders always left untouched</text>
 
 </svg>
