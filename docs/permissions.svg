@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1400 1020" xmlns="http://www.w3.org/2000/svg" font-family="'SF Mono', 'Fira Code', monospace" font-size="13">
+  <defs>
+    <style>
+      .bg        { fill: #0d0f14; }
+      .panel     { fill: #13161e; stroke: #252a38; stroke-width: 1.5; rx: 10; }
+      .title     { fill: #e2e8f0; font-size: 15px; font-weight: 700; font-family: 'Inter', sans-serif; }
+      .subtitle  { fill: #64748b; font-size: 11px; font-family: 'Inter', sans-serif; }
+      .dir       { fill: #1c202c; stroke: #2e3447; stroke-width: 1.5; }
+      .dir-label { fill: #e2e8f0; font-size: 13px; }
+      .perm      { fill: #a5b4fc; font-size: 12px; }
+      .own       { fill: #94a3b8; font-size: 11px; }
+      .mode2750  { fill: #fcd34d; font-size: 12px; font-weight: 600; }
+      .mode2770  { fill: #86efac; font-size: 12px; font-weight: 600; }
+      .mode0600  { fill: #fca5a5; font-size: 12px; font-weight: 600; }
+      .grp       { fill: #c4b5fd; font-size: 12px; }
+      .member    { fill: #94a3b8; font-size: 11px; }
+      .arrow     { stroke: #2e3447; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+      .arrow-grp { stroke: #6366f1; stroke-width: 1.5; fill: none; stroke-dasharray: 5,3; marker-end: url(#arrowhead-purple); }
+      .legend-box { fill: #1c202c; stroke: #252a38; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2e3447"/>
+    </marker>
+    <marker id="arrowhead-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6366f1"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1020" class="bg"/>
+
+  <!-- ═══════════════════════════════════════════════════
+       DIAGRAM 1 — Simple project (just /shr)
+  ═══════════════════════════════════════════════════ -->
+  <rect x="20" y="20" width="420" height="560" rx="10" class="panel"/>
+  <text x="40" y="52" class="title">① Simple Project</text>
+  <text x="40" y="70" class="subtitle">projects/banana  ·  shr only</text>
+
+  <!-- /projects (root) -->
+  <rect x="40" y="88" width="380" height="54" rx="7" class="dir"/>
+  <text x="60" y="109" class="dir-label">📁  projects/</text>
+  <text x="60" y="127" class="own">owner: root:root  ·  drwxr-xr-x (755)</text>
+
+  <!-- /projects/banana -->
+  <rect x="70" y="162" width="350" height="66" rx="7" class="dir"/>
+  <text x="90" y="183" class="dir-label">📁  banana/</text>
+  <text x="90" y="200" class="own">owner: root:grp-banana</text>
+  <text x="90" y="216" class="mode2750">chmod 2750  →  drwxr-x--- + setgid</text>
+
+  <!-- .project.json -->
+  <rect x="90" y="248" width="310" height="52" rx="7" class="dir"/>
+  <text x="110" y="268" class="dir-label">🔒  .project.json</text>
+  <text x="110" y="284" class="own">owner: root:root</text>
+  <text x="110" y="298" class="mode0600">chmod 0600  →  -rw------- (root only)</text>
+
+  <!-- /shr -->
+  <rect x="90" y="320" width="310" height="66" rx="7" class="dir"/>
+  <text x="110" y="341" class="dir-label">📂  shr/</text>
+  <text x="110" y="358" class="own">owner: root:grp-banana</text>
+  <text x="110" y="374" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- Tree lines -->
+  <line x1="70" y1="195" x2="90" y2="248" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="70" y1="195" x2="90" y2="320" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="60" y1="142" x2="70" y2="162" stroke="#2e3447" stroke-width="1.5"/>
+
+  <!-- Group box -->
+  <rect x="40" y="408" width="380" height="90" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="58" y="428" class="grp">🔑  grp-banana</text>
+  <text x="58" y="446" class="member">members:  apple · orange · pineapple · peach</text>
+  <text x="58" y="462" class="member">can traverse banana/ and read/write shr/</text>
+  <text x="58" y="480" class="member">cannot see the root write-locked entry</text>
+  <text x="58" y="496" class="member">managers = all members  (no -adm group)</text>
+
+  <!-- Legend -->
+  <rect x="40" y="518" width="380" height="50" rx="6" class="legend-box"/>
+  <text x="58" y="537" class="mode2750">2750</text>
+  <text x="100" y="537" class="own">group r-x, others ---   (gatekeeper)</text>
+  <text x="58" y="555" class="mode2770">2770</text>
+  <text x="100" y="555" class="own">group rwx, others ---   (collaborative)</text>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       DIAGRAM 2 — Sensitive project with /adm + stewards
+  ═══════════════════════════════════════════════════ -->
+  <rect x="470" y="20" width="440" height="640" rx="10" class="panel"/>
+  <text x="490" y="52" class="title">② Sensitive Project with Data Stewards</text>
+  <text x="490" y="70" class="subtitle">projects/clinical-trial-2025  ·  adm subfolder + grp-adm</text>
+
+  <!-- /projects/clinical... -->
+  <rect x="490" y="88" width="400" height="66" rx="7" class="dir"/>
+  <text x="510" y="109" class="dir-label">📁  clinical-trial-2025/</text>
+  <text x="510" y="126" class="own">owner: root:grp-clinical-trial-2025</text>
+  <text x="510" y="142" class="mode2750">chmod 2750  →  drwxr-x--- + setgid</text>
+
+  <!-- .project.json -->
+  <rect x="520" y="174" width="350" height="52" rx="7" class="dir"/>
+  <text x="540" y="194" class="dir-label">🔒  .project.json</text>
+  <text x="540" y="210" class="own">owner: root:root</text>
+  <text x="540" y="224" class="mode0600">chmod 0600  →  root only</text>
+
+  <!-- /shr -->
+  <rect x="520" y="246" width="350" height="66" rx="7" class="dir"/>
+  <text x="540" y="267" class="dir-label">📂  shr/</text>
+  <text x="540" y="284" class="own">owner: root:grp-clinical-trial-2025</text>
+  <text x="540" y="300" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- /adm -->
+  <rect x="520" y="332" width="350" height="66" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="540" y="353" class="dir-label">📂  adm/</text>
+  <text x="540" y="370" class="own">owner: root:grp-clinical-trial-2025-adm</text>
+  <text x="540" y="386" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- Tree lines -->
+  <line x1="510" y1="154" x2="520" y2="174" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="510" y1="154" x2="520" y2="246" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="510" y1="154" x2="520" y2="332" stroke="#2e3447" stroke-width="1.5"/>
+
+  <!-- ABE callout -->
+  <rect x="520" y="416" width="350" height="32" rx="6" fill="#1c1008" stroke="#f59e0b" stroke-width="1"/>
+  <text x="540" y="436" fill="#fcd34d" font-size="11" font-family="'Inter',sans-serif">⚠  Samba ABE: adm/ is invisible to non-adm members</text>
+
+  <!-- Groups -->
+  <rect x="490" y="464" width="400" height="76" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="508" y="484" class="grp">🔑  grp-clinical-trial-2025</text>
+  <text x="508" y="502" class="member">apple · orange · pineapple · peach · grape</text>
+  <text x="508" y="518" class="member">can access shr/  ·  managers = adm members only</text>
+  <text x="508" y="534" fill="#c4b5fd" font-size="11">⬡  sensitive badge shown  (adm group exists)</text>
+
+  <rect x="490" y="550" width="400" height="58" rx="7" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="508" y="570" fill="#d8b4fe" font-size="12" font-weight="600">🔑  grp-clinical-trial-2025-adm  (data stewards)</text>
+  <text x="508" y="588" class="member">apple · grape   ←  only these users can manage</text>
+  <text x="508" y="604" class="member">can see and write to adm/   ·   manage project</text>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       DIAGRAM 3 — Stewards + samples subfolder
+  ═══════════════════════════════════════════════════ -->
+  <rect x="940" y="20" width="440" height="760" rx="10" class="panel"/>
+  <text x="960" y="52" class="title">③ Stewards + Restricted Subfolder</text>
+  <text x="960" y="70" class="subtitle">projects/genomics-study  ·  adm + samples</text>
+
+  <!-- /projects/genomics-study -->
+  <rect x="960" y="88" width="400" height="66" rx="7" class="dir"/>
+  <text x="980" y="109" class="dir-label">📁  genomics-study/</text>
+  <text x="980" y="126" class="own">owner: root:grp-genomics-study</text>
+  <text x="980" y="142" class="mode2750">chmod 2750  →  drwxr-x--- + setgid</text>
+
+  <!-- .project.json -->
+  <rect x="990" y="174" width="360" height="52" rx="7" class="dir"/>
+  <text x="1010" y="194" class="dir-label">🔒  .project.json</text>
+  <text x="1010" y="210" class="own">owner: root:root</text>
+  <text x="1010" y="224" class="mode0600">chmod 0600  →  root only</text>
+
+  <!-- /shr -->
+  <rect x="990" y="246" width="360" height="66" rx="7" class="dir"/>
+  <text x="1010" y="267" class="dir-label">📂  shr/</text>
+  <text x="1010" y="284" class="own">owner: root:grp-genomics-study</text>
+  <text x="1010" y="300" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- /adm -->
+  <rect x="990" y="332" width="360" height="66" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="1010" y="353" class="dir-label">📂  adm/</text>
+  <text x="1010" y="370" class="own">owner: root:grp-genomics-study-adm</text>
+  <text x="1010" y="386" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- /samples -->
+  <rect x="990" y="418" width="360" height="66" rx="7" fill="#0c1a12" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="1010" y="439" class="dir-label">📂  samples/</text>
+  <text x="1010" y="456" class="own">owner: root:grp-genomics-study-samples</text>
+  <text x="1010" y="472" class="mode2770">chmod 2770  →  drwxrws--- + setgid</text>
+
+  <!-- Tree lines -->
+  <line x1="980" y1="154" x2="990" y2="174" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="980" y1="154" x2="990" y2="246" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="980" y1="154" x2="990" y2="332" stroke="#2e3447" stroke-width="1.5"/>
+  <line x1="980" y1="154" x2="990" y2="418" stroke="#2e3447" stroke-width="1.5"/>
+
+  <!-- ABE callout -->
+  <rect x="990" y="502" width="360" height="32" rx="6" fill="#1c1008" stroke="#f59e0b" stroke-width="1"/>
+  <text x="1010" y="522" fill="#fcd34d" font-size="11" font-family="'Inter',sans-serif">⚠  ABE: adm/ + samples/ invisible to non-members</text>
+
+  <!-- Groups -->
+  <rect x="960" y="552" width="400" height="60" rx="7" fill="#1a1040" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="978" y="572" class="grp">🔑  grp-genomics-study</text>
+  <text x="978" y="590" class="member">apple · orange · pineapple · peach · grape · mango</text>
+  <text x="978" y="606" class="member">access: shr/   ·   managers = adm members only</text>
+
+  <rect x="960" y="622" width="400" height="58" rx="7" fill="#120820" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="978" y="642" fill="#d8b4fe" font-size="12" font-weight="600">🔑  grp-genomics-study-adm  (data stewards)</text>
+  <text x="978" y="660" class="member">apple · grape   ←  manage project + see adm/</text>
+  <text x="978" y="676" class="member">chmod 2770 on adm/  ·  ABE hides from others</text>
+
+  <rect x="960" y="690" width="400" height="58" rx="7" fill="#0a1a0e" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="978" y="710" fill="#86efac" font-size="12" font-weight="600">🔑  grp-genomics-study-samples</text>
+  <text x="978" y="728" class="member">orange · mango   ←  samples team only</text>
+  <text x="978" y="744" class="member">chmod 2770 on samples/  ·  ABE hides from others</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       Bottom: What each user sees
+  ═══════════════════════════════════════════════════ -->
+  <rect x="20" y="600" width="420" height="100" rx="10" class="panel"/>
+  <text x="40" y="622" class="title">What a user sees in ① (banana via Samba)</text>
+  <text x="40" y="644" class="member">any member:   banana/  →  shr/</text>
+  <text x="40" y="662" class="member">non-member:   banana/  is invisible  (ABE)</text>
+  <text x="40" y="680" fill="#86efac" font-size="11" font-family="'Inter',sans-serif">setgid on shr/ means new files inherit grp-banana</text>
+  <text x="40" y="698" fill="#64748b" font-size="11" font-family="'Inter',sans-serif">.project.json never visible — root:root 0600</text>
+
+  <rect x="470" y="680" width="440" height="100" rx="10" class="panel"/>
+  <text x="490" y="702" class="title">What a user sees in ② (clinical-trial)</text>
+  <text x="490" y="722" class="member">plain member:        shr/  only</text>
+  <text x="490" y="740" class="member">data steward:        shr/  +  adm/</text>
+  <text x="490" y="758" class="member">non-member:          project is invisible  (ABE + 404)</text>
+
+  <rect x="940" y="768" width="440" height="100" rx="10" class="panel"/>
+  <text x="960" y="790" class="title">What a user sees in ③ (genomics)</text>
+  <text x="960" y="810" class="member">plain member:        shr/  only</text>
+  <text x="960" y="828" class="member">data steward:        shr/  +  adm/</text>
+  <text x="960" y="846" class="member">samples member:      shr/  +  samples/</text>
+  <text x="960" y="864" class="member">steward+samples:     shr/  +  adm/  +  samples/</text>
+
+  <!-- Key at bottom -->
+  <rect x="20" y="888" width="880" height="112" rx="10" class="panel"/>
+  <text x="40" y="912" class="title">Permission Key</text>
+  <rect x="40" y="924" width="14" height="14" rx="3" fill="#fcd34d" opacity="0.8"/>
+  <text x="60" y="936" class="own">2750  =  owner rwx  ·  group r-x  ·  others ---  +  setgid  →  gatekeeper: group can enter but not write at root</text>
+  <rect x="40" y="948" width="14" height="14" rx="3" fill="#86efac" opacity="0.8"/>
+  <text x="60" y="960" class="own">2770  =  owner rwx  ·  group rwx  ·  others ---  +  setgid  →  full collaboration, new files inherit group</text>
+  <rect x="40" y="972" width="14" height="14" rx="3" fill="#fca5a5" opacity="0.8"/>
+  <text x="60" y="984" class="own">0600  =  owner rw   ·  group ---  ·  others ---            →  root-only metadata, not exposed to project group</text>
+  <text x="40" y="998" fill="#6366f1" font-size="11" font-family="'Inter',sans-serif">setgid (the 2 prefix) is mandatory on every directory — it causes new files/subdirs to inherit the directory's group rather than the creator's primary group</text>
+</svg>
