@@ -201,8 +201,12 @@ async def update_members(
     project_name: str,
     members: Annotated[str, Form()] = "",
 ):
-    _, project = require_manager(request, project_name)
-    sync_group_members(project.primary_group, _parse_usernames(members))
+    username, project = require_manager(request, project_name)
+    member_list = _parse_usernames(members)
+    # Don't let me remove my own access: if I'm currently a member, keep me in.
+    if username in project.members and username not in member_list:
+        member_list.append(username)
+    sync_group_members(project.primary_group, member_list)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
@@ -212,8 +216,12 @@ async def update_stewards(
     project_name: str,
     stewards: Annotated[str, Form()] = "",
 ):
-    require_manager(request, project_name)
-    set_stewards(project_name, _parse_usernames(stewards))
+    username, _ = require_manager(request, project_name)
+    steward_list = _parse_usernames(stewards)
+    # If I'm designating stewards, include myself so I keep management rights.
+    if steward_list and username not in steward_list:
+        steward_list.append(username)
+    set_stewards(project_name, steward_list)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
