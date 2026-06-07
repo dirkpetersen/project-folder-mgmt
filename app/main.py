@@ -21,10 +21,12 @@ from app.system import (
     TEST_USERS,
     create_project,
     create_subfolder,
+    deactivate_project,
     delete_project,
     delete_subfolder,
     lock_project,
     lock_subfolder,
+    reactivate_project,
     set_stewards,
     set_subfolder_members,
     sync_group_members,
@@ -127,7 +129,7 @@ async def dashboard(request: Request):
         "username": username,
         "visible_projects": visible_projects,
         "deleted_projects": [p for p in held if p.state == "deleted"],
-        "locked_projects": [p for p in held if p.state == "locked"],
+        "inactive_projects": [p for p in held if p.state == "inactive"],
     })
 
 
@@ -270,11 +272,25 @@ async def do_undelete_project(request: Request, project_name: str):
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
+@app.post("/projects/{project_name}/deactivate")
+async def do_deactivate_project(request: Request, project_name: str):
+    require_manager(request, project_name)
+    deactivate_project(project_name)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/projects/{project_name}/reactivate")
+async def do_reactivate_project(request: Request, project_name: str):
+    require_manager(request, project_name)
+    reactivate_project(project_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
 @app.post("/projects/{project_name}/lock")
 async def do_lock_project(request: Request, project_name: str):
     require_manager(request, project_name)
-    lock_project(project_name)
-    return RedirectResponse(url="/", status_code=303)
+    lock_project(project_name)  # read-only in place
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
 @app.post("/projects/{project_name}/unlock")

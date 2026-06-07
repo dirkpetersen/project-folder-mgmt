@@ -10,6 +10,7 @@ import pwd
 import random
 import re
 import shutil
+import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,13 +36,18 @@ MAX_GROUP_NAME = int(os.environ.get("MAX_GROUP_NAME", "32"))
 METADATA_FILE = ".project.json"
 METADATA_FIELDS = ("pi_lead", "department", "description", "cost_id")  # free-text fields
 
-# Holding areas for projects taken out of the active listing. Both are root-only
-# (0700) so members can't reach the files inside. Deleted projects are purged
-# from disk after RETENTION_DAYS; locked projects stay until explicitly unlocked.
+# Holding areas (root-only 0700) for items taken out of the active listing.
+# Deleted items are purged from disk after RETENTION_DAYS; deactivated items are
+# moved aside to declutter the listing and kept until reactivated.
 DELETED_DIR = ".deleted"
-LOCKED_DIR = ".locked"
+INACTIVE_DIR = ".inactive"
 RETENTION_DAYS = 90
-DELETED_AT_MARKER = ".deleted_at"   # ISO timestamp written when a project is deleted
+DELETED_AT_MARKER = ".deleted_at"   # ISO timestamp written when an item is deleted
+
+# Lock = read-only IN PLACE (not moved). A root-only marker file records it; the
+# folder's group write bit is dropped (and the default ACL's write bit) so the
+# group can still read but not change anything. Unlock restores read/write.
+LOCK_MARKER = ".locked"
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +131,7 @@ def subgroup(folder_name: str, area: str) -> str:
 def generate_project_id() -> str:
     """Allocate a unique xx-xx id not already used by a group or folder."""
     existing = set()
-    for sub in ("", DELETED_DIR, LOCKED_DIR):
+    for sub in ("", DELETED_DIR, INACTIVE_DIR):
         d = PROJECTS_BASE / sub if sub else PROJECTS_BASE
         if d.is_dir():
             for entry in d.iterdir():
@@ -363,6 +369,73 @@ def read_deleted_marker(path: Path) -> datetime | None:
         return None
 
 
+# --- read-only lock (in place, via mode bits) -----------------------------
+
+def _iter_tree(top: Path):
+    """Yield top and every descendant (files and dirs, including dotfiles)."""
+    top = Path(top)
+    if not top.exists():
+        return
+    yield top
+    for root, dirs, files in os.walk(top):
+        for name in dirs + files:
+            yield Path(root) / name
+
+
+def _lock_tree(top: Path) -> None:
+    """Make a tree read-only: drop the group-write bit everywhere and drop the
+    default ACL's group-write bit on dirs (so the group can read but not change)."""
+    for p in _iter_tree(top):
+        try:
+            mode = stat.S_IMODE(os.stat(p).st_mode)
+            os.chmod(p, mode & ~0o020)  # clear group write
+            if p.is_dir():
+                _run(["setfacl", "-d", "-m", "u::rwx,g::rx,o::-", str(p)])
+        except FileNotFoundError:
+            pass
+
+
+def _unlock_tree(top: Path) -> None:
+    """Restore read/write: collaborative dirs back to 2770, files back to group
+    rw, and the default ACL's group-write bit restored."""
+    for p in _iter_tree(top):
+        try:
+            if p.is_dir():
+                os.chmod(p, 0o2770)
+                _run(["setfacl", "-d", "-m", "u::rwx,g::rwx,o::-", str(p)])
+            else:
+                os.chmod(p, stat.S_IMODE(os.stat(p).st_mode) | 0o060)  # group rw
+        except FileNotFoundError:
+            pass
+
+
+def _content_children(project_dir: Path) -> list:
+    """The writable content dirs of a project (shr + subfolders) — i.e. every
+    top-level dir except the dot holding areas. The project root itself stays
+    2750 (already read-only for the group) and is not touched."""
+    if not project_dir.is_dir():
+        return []
+    return [e for e in sorted(project_dir.iterdir())
+            if e.is_dir() and not e.name.startswith(".")]
+
+
+def is_locked(path: Path) -> bool:
+    return (Path(path) / LOCK_MARKER).exists()
+
+
+def _write_lock_marker(path: Path) -> None:
+    marker = Path(path) / LOCK_MARKER
+    marker.write_text("")
+    os.chown(marker, 0, 0)
+    os.chmod(marker, 0o600)
+
+
+def _remove_lock_marker(path: Path) -> None:
+    marker = Path(path) / LOCK_MARKER
+    if marker.exists():
+        marker.unlink()
+
+
 # --- whole projects -------------------------------------------------------
 
 def delete_project(project_name: str) -> None:
@@ -376,14 +449,31 @@ def undelete_project(project_name: str) -> None:
     _unhold(PROJECTS_BASE, project_name, DELETED_DIR)
 
 
+def deactivate_project(project_name: str) -> None:
+    """Deactivate: move the project into projects/.inactive/<name> to declutter
+    the listing. Hidden and inaccessible (root-only holding dir); kept until
+    reactivated."""
+    _hold(PROJECTS_BASE, project_name, INACTIVE_DIR)
+
+
+def reactivate_project(project_name: str) -> None:
+    _unhold(PROJECTS_BASE, project_name, INACTIVE_DIR)
+
+
 def lock_project(project_name: str) -> None:
-    """Lock: move the project into projects/.locked/<name> — hidden and
-    inaccessible (root-only holding dir), kept until unlocked."""
-    _hold(PROJECTS_BASE, project_name, LOCKED_DIR)
+    """Lock read-only IN PLACE: the project stays visible and readable, but all
+    its content folders (shr + subfolders) lose group write. Reversible."""
+    root = PROJECTS_BASE / project_name
+    for child in _content_children(root):
+        _lock_tree(child)
+    _write_lock_marker(root)
 
 
 def unlock_project(project_name: str) -> None:
-    _unhold(PROJECTS_BASE, project_name, LOCKED_DIR)
+    root = PROJECTS_BASE / project_name
+    for child in _content_children(root):
+        _unlock_tree(child)
+    _remove_lock_marker(root)
 
 
 def deleted_at(project_name: str) -> datetime | None:
@@ -391,7 +481,7 @@ def deleted_at(project_name: str) -> datetime | None:
     return read_deleted_marker(PROJECTS_BASE / DELETED_DIR / project_name)
 
 
-# --- restricted subfolders (same logic, inside the project root) ----------
+# --- subfolders (delete inside the project root; lock read-only in place) --
 
 def delete_subfolder(project_name: str, folder_name: str) -> None:
     """Soft-delete a subfolder into <project>/.deleted/<folder>. Group kept."""
@@ -403,11 +493,16 @@ def undelete_subfolder(project_name: str, folder_name: str) -> None:
 
 
 def lock_subfolder(project_name: str, folder_name: str) -> None:
-    _hold(PROJECTS_BASE / project_name, folder_name, LOCKED_DIR)
+    """Lock just this subfolder read-only in place."""
+    path = PROJECTS_BASE / project_name / folder_name
+    _lock_tree(path)
+    _write_lock_marker(path)
 
 
 def unlock_subfolder(project_name: str, folder_name: str) -> None:
-    _unhold(PROJECTS_BASE / project_name, folder_name, LOCKED_DIR)
+    path = PROJECTS_BASE / project_name / folder_name
+    _unlock_tree(path)
+    _remove_lock_marker(path)
 
 
 # --- purge ----------------------------------------------------------------

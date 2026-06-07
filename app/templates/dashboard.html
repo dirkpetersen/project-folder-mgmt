@@ -39,6 +39,7 @@
               <a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a>
               {% if p.public %}<span class="badge badge-public">public</span>{% endif %}
               {% if p.restricted %}<span class="badge badge-sensitive">sensitive</span>{% endif %}
+              {% if p.locked %}<span class="badge badge-public">read-only</span>{% endif %}
               {% if p.cost_id %}<div class="cell-sub">{{ p.cost_id }}</div>{% endif %}
             </td>
             <td>{{ p.pi_lead or "—" }}</td>
@@ -112,23 +113,23 @@
   </div>
   {% endif %}
 
-  {% if locked_projects %}
+  {% if inactive_projects %}
   <div class="card mt-6">
     <div class="card-header">
-      <h2 class="card-title">Locked</h2>
-      <span class="card-sub">In <code>.locked</code> · hidden &amp; inaccessible until unlocked</span>
+      <h2 class="card-title">Inactive</h2>
+      <span class="card-sub">In <code>.inactive</code> · hidden to reduce clutter, kept until reactivated</span>
     </div>
     <div class="table-wrap">
       <table class="matrix-table">
         <thead><tr><th>Project</th><th></th></tr></thead>
         <tbody>
-          {% for p in locked_projects %}
+          {% for p in inactive_projects %}
           <tr>
             <td><a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a></td>
             <td>
               {% if username in p.managers %}
-              <form method="post" action="/projects/{{ p.name }}/unlock">
-                <button type="submit" class="btn btn-sm btn-primary">Unlock</button>
+              <form method="post" action="/projects/{{ p.name }}/reactivate">
+                <button type="submit" class="btn btn-sm btn-primary">Reactivate</button>
               </form>
               {% endif %}
             </td>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ project.name }} — ProjectVault{% endblock %}
 {% block content %}
-{# editing is only allowed on active projects; restore is allowed when held #}
-{% set can_edit = can_manage and project.state == 'active' %}
+{# editing needs an active, unlocked project; restore/unlock is allowed otherwise #}
+{% set can_edit = can_manage and project.state == 'active' and not project.locked %}
 <div class="page-wrap">
 
   <div class="page-header">
@@ -24,22 +24,30 @@
     </div>
     {% if can_manage %}
     <div class="flex-row gap-3">
-      {% if project.state == 'active' %}
-      <form method="post" action="/projects/{{ project.name }}/lock"
-            onsubmit="return confirm('Lock {{ project.name }}? It is moved to projects/.locked, hidden from listings, and members lose access until it is unlocked.')">
-        <button type="submit" class="btn btn-ghost">Lock</button>
-      </form>
-      <form method="post" action="/projects/{{ project.name }}/delete"
-            onsubmit="return confirm('Delete {{ project.name }}? It is moved to projects/.deleted and permanently removed after 90 days. You can undelete it before then.')">
-        <button type="submit" class="btn btn-danger">Delete</button>
-      </form>
-      {% elif project.state == 'deleted' %}
+      {% if project.state == 'deleted' %}
       <form method="post" action="/projects/{{ project.name }}/undelete">
         <button type="submit" class="btn btn-primary">Undelete</button>
       </form>
-      {% elif project.state == 'locked' %}
+      {% elif project.state == 'inactive' %}
+      <form method="post" action="/projects/{{ project.name }}/reactivate">
+        <button type="submit" class="btn btn-primary">Reactivate</button>
+      </form>
+      {% elif project.locked %}
       <form method="post" action="/projects/{{ project.name }}/unlock">
         <button type="submit" class="btn btn-primary">Unlock</button>
+      </form>
+      {% else %}
+      <form method="post" action="/projects/{{ project.name }}/lock"
+            onsubmit="return confirm('Lock {{ project.name }} read-only? It stays visible and readable, but no one can change its contents until unlocked.')">
+        <button type="submit" class="btn btn-ghost">Lock</button>
+      </form>
+      <form method="post" action="/projects/{{ project.name }}/deactivate"
+            onsubmit="return confirm('Deactivate {{ project.name }}? It moves to projects/.inactive and disappears from listings (declutter). Reactivate any time.')">
+        <button type="submit" class="btn btn-ghost">Deactivate</button>
+      </form>
+      <form method="post" action="/projects/{{ project.name }}/delete"
+            onsubmit="return confirm('Delete {{ project.name }}? It moves to projects/.deleted and is permanently removed after 90 days. You can undelete it before then.')">
+        <button type="submit" class="btn btn-danger">Delete</button>
       </form>
       {% endif %}
     </div>
@@ -59,10 +67,15 @@
     permanently removed in <strong>{{ project.days_left }}</strong>
     day{{ '' if project.days_left == 1 else 's' }}. Undelete to restore it.
   </div>
-  {% elif project.state == 'locked' %}
+  {% elif project.state == 'inactive' %}
   <div class="alert alert-warn mt-4">
-    <strong>Locked.</strong> This project is in <code>.locked</code>, hidden from
-    listings and inaccessible to members. Unlock to restore it.
+    <strong>Inactive.</strong> This project is in <code>.inactive</code>, hidden from
+    listings to reduce clutter. Reactivate to restore it.
+  </div>
+  {% elif project.locked %}
+  <div class="alert alert-warn mt-4">
+    <strong>Locked (read-only).</strong> Members can read everything but cannot make
+    changes. Unlock to allow changes again.
   </div>
   {% endif %}
 
@@ -228,23 +241,32 @@
           {% else %}
           <span class="badge badge-public">open to project</span>
           {% endif %}
+          {% if sub.locked or project.locked %}
+          <span class="badge badge-public">read-only</span>
+          {% endif %}
         </h3>
         <span class="card-sub">Group <code>{{ sub.group }}</code></span>
       </div>
       {% if can_edit %}
       <div class="flex-row gap-3">
+        {% if sub.locked %}
+        <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/unlock">
+          <button type="submit" class="btn btn-sm btn-primary">Unlock</button>
+        </form>
+        {% else %}
         <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/lock"
-              onsubmit="return confirm('Lock /{{ sub.name }}? It moves to the project .locked area, hidden and inaccessible until unlocked.')">
+              onsubmit="return confirm('Lock /{{ sub.name }} read-only? It stays visible and readable, but its contents can''t be changed until unlocked.')">
           <button type="submit" class="btn btn-sm btn-ghost">Lock</button>
         </form>
         <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/delete"
               onsubmit="return confirm('Delete /{{ sub.name }}? It moves to the project .deleted area and is permanently removed after 90 days. You can undelete it before then.')">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
+        {% endif %}
       </div>
       {% endif %}
     </div>
-    {% if can_edit %}
+    {% if can_edit and not sub.locked %}
     <form method="post"
           action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/members"
           class="card-body">

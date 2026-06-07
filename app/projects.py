@@ -8,13 +8,14 @@ from datetime import datetime, timezone
 
 from app.system import (
     DELETED_DIR,
-    LOCKED_DIR,
+    INACTIVE_DIR,
     PROJECTS_BASE,
     RETENTION_DAYS,
     deleted_at,
     dir_group,
     get_group_members,
     group_exists,
+    is_locked,
     project_group,
     read_deleted_marker,
     read_metadata,
@@ -66,7 +67,8 @@ class Subfolder:
     group: str
     members: list[str]
     restricted: bool = True        # False = open to the whole project group
-    state: str = "active"          # "active" | "deleted" | "locked"
+    state: str = "active"          # "active" | "deleted"
+    locked: bool = False           # read-only in place
     days_left: int | None = None   # days until purge (deleted subfolders only)
 
 
@@ -84,18 +86,19 @@ class Project:
     description: str = ""       # from .project.json
     cost_id: str = ""           # from .project.json
     public: bool = False        # from .project.json; visible to everyone if true
-    state: str = "active"       # "active" | "deleted" | "locked"
+    state: str = "active"       # "active" | "deleted" | "inactive"
+    locked: bool = False        # read-only in place
     days_left: int | None = None  # days until purge (deleted projects only)
     subfolders: list[Subfolder] = field(default_factory=list)        # active
-    held_subfolders: list[Subfolder] = field(default_factory=list)   # deleted/locked
+    held_subfolders: list[Subfolder] = field(default_factory=list)   # deleted
 
     @property
     def path(self) -> str:
         """Absolute filesystem path of the project's current location."""
         if self.state == "deleted":
             return str(PROJECTS_BASE / DELETED_DIR / self.name)
-        if self.state == "locked":
-            return str(PROJECTS_BASE / LOCKED_DIR / self.name)
+        if self.state == "inactive":
+            return str(PROJECTS_BASE / INACTIVE_DIR / self.name)
         return str(PROJECTS_BASE / self.name)
 
     @property
@@ -134,9 +137,9 @@ def _locate(project_name: str) -> tuple:
     deleted = PROJECTS_BASE / DELETED_DIR / project_name
     if deleted.is_dir():
         return deleted, "deleted"
-    locked = PROJECTS_BASE / LOCKED_DIR / project_name
-    if locked.is_dir():
-        return locked, "locked"
+    inactive = PROJECTS_BASE / INACTIVE_DIR / project_name
+    if inactive.is_dir():
+        return inactive, "inactive"
     return None, None
 
 
@@ -170,28 +173,29 @@ def _subfolder_from_dir(project_name: str, entry, state: str = "active",
         members=get_group_members(gname) if restricted else [],
         restricted=restricted,
         state=state,
+        locked=is_locked(entry),
         days_left=days_left,
     )
 
 
 def _held_subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
-    """Discover deleted and locked subfolders held under the project root."""
+    """Discover deleted subfolders held under the project root.
+
+    (Locked subfolders stay in place and appear among the active subfolders with
+    their `locked` flag set — only deleted ones are moved aside.)"""
     if not project_dir or not project_dir.is_dir():
         return []
     held = []
-    for subdir, state in ((DELETED_DIR, "deleted"), (LOCKED_DIR, "locked")):
-        holding = project_dir / subdir
-        if not holding.is_dir():
-            continue
+    holding = project_dir / DELETED_DIR
+    if holding.is_dir():
         for entry in sorted(holding.iterdir()):
             if not entry.is_dir():
                 continue
+            ts = read_deleted_marker(entry)
             days_left = None
-            if state == "deleted":
-                ts = read_deleted_marker(entry)
-                if ts is not None:
-                    days_left = max(0, RETENTION_DAYS - (datetime.now(timezone.utc) - ts).days)
-            held.append(_subfolder_from_dir(project_name, entry, state, days_left))
+            if ts is not None:
+                days_left = max(0, RETENTION_DAYS - (datetime.now(timezone.utc) - ts).days)
+            held.append(_subfolder_from_dir(project_name, entry, "deleted", days_left))
     return held
 
 
@@ -230,6 +234,7 @@ def get_project(project_name: str) -> Project | None:
         cost_id=meta.get("cost_id", ""),
         public=meta.get("public", False),
         state=state,
+        locked=is_locked(project_dir),
         days_left=days_left,
         subfolders=_subfolders_for(project_name, project_dir),
         held_subfolders=_held_subfolders_for(project_name, project_dir),
@@ -267,7 +272,7 @@ def projects_visible_to(username: str) -> list[Project]:
 
 
 def _list_holding(subdir: str) -> list[Project]:
-    """Build Project objects for everything in a holding area (.deleted/.locked)."""
+    """Build Project objects for everything in a holding area (.deleted/.inactive)."""
     holding = PROJECTS_BASE / subdir
     if not holding.is_dir():
         return []
@@ -282,6 +287,6 @@ def _list_holding(subdir: str) -> list[Project]:
 
 
 def held_projects_for(username: str) -> list[Project]:
-    """Deleted + locked projects the given user is a member of (for restore UI)."""
-    held = _list_holding(DELETED_DIR) + _list_holding(LOCKED_DIR)
+    """Deleted + inactive projects the given user is a member of (for restore UI)."""
+    held = _list_holding(DELETED_DIR) + _list_holding(INACTIVE_DIR)
     return [p for p in held if username in p.members]
