@@ -83,5 +83,62 @@
   </div>
   {% endif %}
 
+  {% if deleted_projects %}
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Deleted</h2>
+      <span class="card-sub">In <code>.deleted</code> · purged after 90 days</span>
+    </div>
+    <div class="table-wrap">
+      <table class="matrix-table">
+        <thead><tr><th>Project</th><th>Time left</th><th></th></tr></thead>
+        <tbody>
+          {% for p in deleted_projects %}
+          <tr>
+            <td><a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a></td>
+            <td class="muted">{{ p.days_left }} day{{ '' if p.days_left == 1 else 's' }}</td>
+            <td>
+              {% if username in p.managers %}
+              <form method="post" action="/projects/{{ p.name }}/undelete">
+                <button type="submit" class="btn btn-sm btn-primary">Undelete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if locked_projects %}
+  <div class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">Locked</h2>
+      <span class="card-sub">In <code>.locked</code> · hidden &amp; inaccessible until unlocked</span>
+    </div>
+    <div class="table-wrap">
+      <table class="matrix-table">
+        <thead><tr><th>Project</th><th></th></tr></thead>
+        <tbody>
+          {% for p in locked_projects %}
+          <tr>
+            <td><a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a></td>
+            <td>
+              {% if username in p.managers %}
+              <form method="post" action="/projects/{{ p.name }}/unlock">
+                <button type="submit" class="btn btn-sm btn-primary">Unlock</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

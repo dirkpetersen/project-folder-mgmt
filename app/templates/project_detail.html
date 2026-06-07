@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ project.name }} — ProjectVault{% endblock %}
 {% block content %}
+{# editing is only allowed on active projects; restore is allowed when held #}
+{% set can_edit = can_manage and project.state == 'active' %}
 <div class="page-wrap">
 
   <div class="page-header">
@@ -21,12 +23,41 @@
       </p>
     </div>
     {% if can_manage %}
-    <form method="post" action="/projects/{{ project.name }}/delete"
-          onsubmit="return confirm('Archive project {{ project.name }}? Its files are moved to projects/.deleted and it disappears from listings. An administrator can restore it.')">
-      <button type="submit" class="btn btn-danger">Archive Project</button>
-    </form>
+    <div class="flex-row gap-3">
+      {% if project.state == 'active' %}
+      <form method="post" action="/projects/{{ project.name }}/lock"
+            onsubmit="return confirm('Lock {{ project.name }}? It is moved to projects/.locked, hidden from listings, and members lose access until it is unlocked.')">
+        <button type="submit" class="btn btn-ghost">Lock</button>
+      </form>
+      <form method="post" action="/projects/{{ project.name }}/delete"
+            onsubmit="return confirm('Delete {{ project.name }}? It is moved to projects/.deleted and permanently removed after 90 days. You can undelete it before then.')">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+      {% elif project.state == 'deleted' %}
+      <form method="post" action="/projects/{{ project.name }}/undelete">
+        <button type="submit" class="btn btn-primary">Undelete</button>
+      </form>
+      {% elif project.state == 'locked' %}
+      <form method="post" action="/projects/{{ project.name }}/unlock">
+        <button type="submit" class="btn btn-primary">Unlock</button>
+      </form>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
+
+  {% if project.state == 'deleted' %}
+  <div class="alert alert-error mt-4">
+    <strong>Deleted.</strong> This project is in <code>.deleted</code> and will be
+    permanently removed in <strong>{{ project.days_left }}</strong>
+    day{{ '' if project.days_left == 1 else 's' }}. Undelete to restore it.
+  </div>
+  {% elif project.state == 'locked' %}
+  <div class="alert alert-warn mt-4">
+    <strong>Locked.</strong> This project is in <code>.locked</code>, hidden from
+    listings and inaccessible to members. Unlock to restore it.
+  </div>
+  {% endif %}
 
   <div class="detail-grid mt-6">
 
@@ -36,7 +67,7 @@
       <h2 class="card-title">Project Details</h2>
       <span class="card-sub">Stored in <code>.project.json</code> (root only)</span>
     </div>
-    {% if can_manage %}
+    {% if can_edit %}
     <form method="post" action="/projects/{{ project.name }}/metadata" class="card-body">
       <div class="field">
         <label class="field-label" for="pi_lead">PI / Lead</label>
@@ -94,7 +125,7 @@
       <h2 class="card-title">Project Members</h2>
       <span class="card-sub">Group <code>{{ project.primary_group }}</code></span>
     </div>
-    {% if can_manage %}
+    {% if can_edit %}
     <form method="post" action="/projects/{{ project.name }}/members" class="card-body">
       <div class="field">
         <label class="field-label" for="members">Members</label>
@@ -131,7 +162,7 @@
         {% if project.adm_group %}Group <code>{{ project.adm_group }}</code>{% else %}Not set{% endif %}
       </span>
     </div>
-    {% if can_manage %}
+    {% if can_edit %}
     <form method="post" action="/projects/{{ project.name }}/stewards" class="card-body">
       <div class="field">
         <label class="field-label" for="stewards">Stewards / Project Admins</label>
@@ -186,7 +217,7 @@
         </h3>
         <span class="card-sub">Group <code>{{ sub.group }}</code></span>
       </div>
-      {% if can_manage %}
+      {% if can_edit %}
       <form method="post"
             action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/delete"
             onsubmit="return confirm('Delete subfolder /{{ sub.name }}?')">
@@ -194,7 +225,7 @@
       </form>
       {% endif %}
     </div>
-    {% if can_manage %}
+    {% if can_edit %}
     <form method="post"
           action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/members"
           class="card-body">
@@ -225,7 +256,7 @@
   </div>
   {% endfor %}
 
-  {% if can_manage %}
+  {% if can_edit %}
   <!-- Add subfolder -->
   <div class="card mt-3 card-dashed">
     <div class="card-header">

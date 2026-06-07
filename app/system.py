@@ -8,6 +8,7 @@ import os
 import pwd
 import shutil
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Project root resolves to ./projects relative to the directory the app is
@@ -18,6 +19,14 @@ GROUP_PREFIX = "grp-"
 # Per-project metadata file, stored at the project root. Readable by root only.
 METADATA_FILE = ".project.json"
 METADATA_FIELDS = ("pi_lead", "department", "description", "cost_id")  # free-text fields
+
+# Holding areas for projects taken out of the active listing. Both are root-only
+# (0700) so members can't reach the files inside. Deleted projects are purged
+# from disk after RETENTION_DAYS; locked projects stay until explicitly unlocked.
+DELETED_DIR = ".deleted"
+LOCKED_DIR = ".locked"
+RETENTION_DAYS = 90
+DELETED_AT_MARKER = ".deleted_at"   # ISO timestamp written when a project is deleted
 
 
 # ---------------------------------------------------------------------------
@@ -121,9 +130,13 @@ def _provision_dir(path: Path, group_name: str, mode: int) -> None:
         _set_inherit_acl(path)
 
 
-def read_metadata(project_name: str) -> dict:
-    """Read .project.json from the project root. Returns defaults if absent/invalid."""
-    path = PROJECTS_BASE / project_name / METADATA_FILE
+def read_metadata(project_dir: Path) -> dict:
+    """Read .project.json from a project directory. Returns defaults if absent/invalid.
+
+    Takes the directory (not just the name) so it works for active projects as
+    well as ones held under .deleted/ or .locked/.
+    """
+    path = Path(project_dir) / METADATA_FILE
     try:
         data = json.loads(path.read_text())
     except (FileNotFoundError, ValueError):
@@ -176,25 +189,112 @@ def set_stewards(project_name: str, stewards: list[str]) -> None:
         delete_group(adm_group)
 
 
-def archive_project(project_name: str) -> None:
-    """Soft-delete: move the project folder into projects/.deleted/<name>.
+# ---------------------------------------------------------------------------
+# delete / lock (reversible holding areas) + purge
+# ---------------------------------------------------------------------------
 
-    Files are preserved (not destroyed) and the groups are left intact so the
-    project remains restorable. Once moved out of the active area it no longer
-    appears in listings.
-    """
-    root_path = PROJECTS_BASE / project_name
-    if not root_path.exists():
-        return
-    deleted_dir = PROJECTS_BASE / ".deleted"
-    deleted_dir.mkdir(parents=True, exist_ok=True)
-    os.chmod(deleted_dir, 0o700)  # root-only archive
-    target = deleted_dir / project_name
+def _holding(subdir: str) -> Path:
+    """Return (creating if needed) a root-only 0700 holding directory."""
+    d = PROJECTS_BASE / subdir
+    d.mkdir(parents=True, exist_ok=True)
+    os.chmod(d, 0o700)
+    return d
+
+
+def _move_to_holding(project_name: str, subdir: str) -> Path | None:
+    """Move an active project into a holding area; return its new path."""
+    src = PROJECTS_BASE / project_name
+    if not src.exists():
+        return None
+    target = _holding(subdir) / project_name
     suffix = 1
-    while target.exists():  # avoid clobbering a prior archive of the same name
-        target = deleted_dir / f"{project_name}.{suffix}"
+    while target.exists():  # don't clobber a prior entry of the same name
+        target = _holding(subdir) / f"{project_name}.{suffix}"
         suffix += 1
-    shutil.move(str(root_path), str(target))
+    shutil.move(str(src), str(target))
+    return target
+
+
+def _move_from_holding(project_name: str, subdir: str) -> bool:
+    """Move a held project back to the active area. Raises if a name clash exists."""
+    src = PROJECTS_BASE / subdir / project_name
+    if not src.is_dir():
+        return False
+    dest = PROJECTS_BASE / project_name
+    if dest.exists():
+        raise RuntimeError(
+            f"Cannot restore '{project_name}': an active project with that name already exists."
+        )
+    shutil.move(str(src), str(dest))
+    return True
+
+
+def delete_project(project_name: str) -> None:
+    """Soft-delete: move the project into projects/.deleted/<name> and stamp the
+    deletion time. Files and groups are preserved; it can be undeleted until it
+    is purged from disk after RETENTION_DAYS (see purge_expired)."""
+    target = _move_to_holding(project_name, DELETED_DIR)
+    if target is not None:
+        (target / DELETED_AT_MARKER).write_text(datetime.now(timezone.utc).isoformat())
+
+
+def undelete_project(project_name: str) -> None:
+    """Restore a deleted project to the active area."""
+    src = PROJECTS_BASE / DELETED_DIR / project_name
+    marker = src / DELETED_AT_MARKER
+    if marker.exists():
+        marker.unlink()
+    _move_from_holding(project_name, DELETED_DIR)
+
+
+def lock_project(project_name: str) -> None:
+    """Lock: move the project into projects/.locked/<name>. It disappears from
+    listings and members can't reach its files (the holding dir is root-only),
+    but it is kept indefinitely and can be unlocked."""
+    _move_to_holding(project_name, LOCKED_DIR)
+
+
+def unlock_project(project_name: str) -> None:
+    """Restore a locked project to the active area."""
+    _move_from_holding(project_name, LOCKED_DIR)
+
+
+def deleted_at(project_name: str) -> datetime | None:
+    """Return when a deleted project was deleted, or None if unknown."""
+    marker = PROJECTS_BASE / DELETED_DIR / project_name / DELETED_AT_MARKER
+    try:
+        return datetime.fromisoformat(marker.read_text().strip())
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def purge_expired(retention_days: int = RETENTION_DAYS) -> list[str]:
+    """Permanently remove deleted projects older than retention_days, and drop
+    their groups. Returns the names purged. Entries without a valid timestamp
+    are left alone (fail-safe)."""
+    holding = PROJECTS_BASE / DELETED_DIR
+    if not holding.is_dir():
+        return []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    purged = []
+    for entry in holding.iterdir():
+        if not entry.is_dir():
+            continue
+        ts = deleted_at(entry.name)
+        if ts is None or ts >= cutoff:
+            continue
+        shutil.rmtree(entry)
+        _delete_project_groups(entry.name)
+        purged.append(entry.name)
+    return purged
+
+
+def _delete_project_groups(project_name: str) -> None:
+    """Remove a project's primary group and all of its sub-groups."""
+    for g in grp.getgrall():
+        if g.gr_name == f"{GROUP_PREFIX}{project_name}" or \
+           g.gr_name.startswith(f"{GROUP_PREFIX}{project_name}-"):
+            delete_group(g.gr_name)
 
 
 def delete_subfolder(project_name: str, folder_name: str) -> None:

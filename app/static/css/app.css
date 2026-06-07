@@ -461,9 +461,14 @@ code {
   margin-bottom: 16px;
 }
 .alert-error {
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #fca5a5;
+  background: rgba(192,71,58,0.12);
+  border: 1px solid rgba(192,71,58,0.4);
+  color: #d98a7e;
+}
+.alert-warn {
+  background: rgba(194,104,46,0.12);
+  border: 1px solid rgba(194,104,46,0.4);
+  color: #d98c5a;
 }
 
 /* ─── Auth page ─────────────────────────────────────────────────────── */

@@ -11,18 +11,22 @@ from fastapi.templating import Jinja2Templates
 
 from app.projects import (
     get_project,
+    held_projects_for,
     projects_visible_to,
     validate_project_name,
     validate_subfolder_name,
 )
 from app.system import (
     TEST_USERS,
-    archive_project,
     create_project,
     create_subfolder,
+    delete_project,
     delete_subfolder,
+    lock_project,
     set_stewards,
     sync_group_members,
+    undelete_project,
+    unlock_project,
     user_exists,
     write_metadata,
 )
@@ -113,9 +117,12 @@ async def dashboard(request: Request):
     if not username:
         return RedirectResponse(url="/login", status_code=303)
     visible_projects = projects_visible_to(username)
+    held = held_projects_for(username)
     return templates.TemplateResponse(request, "dashboard.html", {
         "username": username,
         "visible_projects": visible_projects,
+        "deleted_projects": [p for p in held if p.state == "deleted"],
+        "locked_projects": [p for p in held if p.state == "locked"],
     })
 
 
@@ -250,8 +257,29 @@ async def update_metadata(
 @app.post("/projects/{project_name}/delete")
 async def do_delete_project(request: Request, project_name: str):
     require_manager(request, project_name)
-    archive_project(project_name)
+    delete_project(project_name)
     return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/projects/{project_name}/undelete")
+async def do_undelete_project(request: Request, project_name: str):
+    require_manager(request, project_name)
+    undelete_project(project_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
+@app.post("/projects/{project_name}/lock")
+async def do_lock_project(request: Request, project_name: str):
+    require_manager(request, project_name)
+    lock_project(project_name)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/projects/{project_name}/unlock")
+async def do_unlock_project(request: Request, project_name: str):
+    require_manager(request, project_name)
+    unlock_project(project_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
 # ---------------------------------------------------------------------------

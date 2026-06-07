@@ -4,10 +4,15 @@ No writes happen here — writes go through system.py.
 """
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from app.system import (
+    DELETED_DIR,
     GROUP_PREFIX,
+    LOCKED_DIR,
     PROJECTS_BASE,
+    RETENTION_DAYS,
+    deleted_at,
     get_group_members,
     group_exists,
     read_metadata,
@@ -64,11 +69,17 @@ class Project:
     description: str = ""       # from .project.json
     cost_id: str = ""           # from .project.json
     public: bool = False        # from .project.json; visible to everyone if true
+    state: str = "active"       # "active" | "deleted" | "locked"
+    days_left: int | None = None  # days until purge (deleted projects only)
     subfolders: list[Subfolder] = field(default_factory=list)
 
     @property
     def path(self) -> str:
-        """Absolute filesystem path of the project root."""
+        """Absolute filesystem path of the project's current location."""
+        if self.state == "deleted":
+            return str(PROJECTS_BASE / DELETED_DIR / self.name)
+        if self.state == "locked":
+            return str(PROJECTS_BASE / LOCKED_DIR / self.name)
         return str(PROJECTS_BASE / self.name)
 
     @property
@@ -90,21 +101,32 @@ class Project:
 # read from system
 # ---------------------------------------------------------------------------
 
-def _subfolders_for(project_name: str) -> list[Subfolder]:
-    """Discover restricted sibling folders from the filesystem.
+def _locate(project_name: str) -> tuple:
+    """Find a project's directory and state. Active first, then the holding
+    areas. Returns (Path, state) or (None, None) if it exists nowhere."""
+    active = PROJECTS_BASE / project_name
+    if active.is_dir():
+        return active, "active"
+    deleted = PROJECTS_BASE / DELETED_DIR / project_name
+    if deleted.is_dir():
+        return deleted, "deleted"
+    locked = PROJECTS_BASE / LOCKED_DIR / project_name
+    if locked.is_dir():
+        return locked, "locked"
+    return None, None
 
-    Each is a directory under /projects/<name> other than 'shr', backed by a
-    grp-<name>-<folder> group. 'adm' is excluded — it is the management group,
-    surfaced separately on the project.
+
+def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
+    """Discover restricted sibling folders inside a project directory.
+
+    Each is a directory other than 'shr', backed by a grp-<name>-<folder>
+    group. 'adm' is excluded — it is the management group, surfaced separately.
     """
-    project_dir = PROJECTS_BASE / project_name
-    if not project_dir.is_dir():
+    if not project_dir or not project_dir.is_dir():
         return []
     subs = []
     for entry in sorted(project_dir.iterdir()):
-        if not entry.is_dir():
-            continue
-        if entry.name in ("shr", "adm"):
+        if not entry.is_dir() or entry.name in ("shr", "adm"):
             continue
         sub_group = f"{GROUP_PREFIX}{project_name}-{entry.name}"
         subs.append(Subfolder(
@@ -119,11 +141,22 @@ def get_project(project_name: str) -> Project | None:
     primary_group = f"{GROUP_PREFIX}{project_name}"
     if not group_exists(primary_group):
         return None
+    project_dir, state = _locate(project_name)
+    if state is None:
+        return None  # group exists but no folder anywhere
     members = get_group_members(primary_group)
     adm_group_name = f"{GROUP_PREFIX}{project_name}-adm"
     adm_group = adm_group_name if group_exists(adm_group_name) else None
     adm_members = get_group_members(adm_group_name) if adm_group else []
-    meta = read_metadata(project_name)
+    meta = read_metadata(project_dir)
+
+    days_left = None
+    if state == "deleted":
+        ts = deleted_at(project_name)
+        if ts is not None:
+            elapsed = (datetime.now(timezone.utc) - ts).days
+            days_left = max(0, RETENTION_DAYS - elapsed)
+
     return Project(
         name=project_name,
         primary_group=primary_group,
@@ -135,7 +168,9 @@ def get_project(project_name: str) -> Project | None:
         description=meta.get("description", ""),
         cost_id=meta.get("cost_id", ""),
         public=meta.get("public", False),
-        subfolders=_subfolders_for(project_name),
+        state=state,
+        days_left=days_left,
+        subfolders=_subfolders_for(project_name, project_dir),
     )
 
 
@@ -167,3 +202,24 @@ def projects_for_user(username: str) -> list[Project]:
 def projects_visible_to(username: str) -> list[Project]:
     """Return projects the user may see: their own, plus any public project."""
     return [p for p in list_projects() if p.is_visible_to(username)]
+
+
+def _list_holding(subdir: str) -> list[Project]:
+    """Build Project objects for everything in a holding area (.deleted/.locked)."""
+    holding = PROJECTS_BASE / subdir
+    if not holding.is_dir():
+        return []
+    projects = []
+    for entry in sorted(holding.iterdir()):
+        if not entry.is_dir():
+            continue
+        p = get_project(entry.name)
+        if p:
+            projects.append(p)
+    return projects
+
+
+def held_projects_for(username: str) -> list[Project]:
+    """Deleted + locked projects the given user is a member of (for restore UI)."""
+    held = _list_holding(DELETED_DIR) + _list_holding(LOCKED_DIR)
+    return [p for p in held if username in p.members]

@@ -19,6 +19,8 @@ def main():
                         help="Bootstrap test users and exit")
     parser.add_argument("--remove-users", action="store_true",
                         help="Remove test users and exit")
+    parser.add_argument("--purge-expired", action="store_true",
+                        help="Purge deleted projects past the 90-day retention and exit")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true",
@@ -41,10 +43,21 @@ def main():
         print(f"Removed {len(removed)} test user(s): {', '.join(removed) or 'none found'}")
         sys.exit(0)
 
+    if args.purge_expired:
+        from app.system import purge_expired
+        purged = purge_expired()
+        print(f"Purged {len(purged)} expired deleted project(s): {', '.join(purged) or 'none'}")
+        sys.exit(0)
+
     # Ensure the project root exists (./projects by default)
-    from app.system import PROJECTS_BASE
+    from app.system import PROJECTS_BASE, purge_expired
     PROJECTS_BASE.mkdir(parents=True, exist_ok=True)
     print(f"Project root: {PROJECTS_BASE}")
+
+    # Permanently remove deleted projects past their 90-day retention.
+    purged = purge_expired()
+    if purged:
+        print(f"Purged {len(purged)} expired deleted project(s): {', '.join(purged)}")
 
     import uvicorn
     uvicorn.run(

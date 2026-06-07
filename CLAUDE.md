@@ -36,7 +36,11 @@ A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-
 
 **Data stewards / project admins** are exactly the members of `grp-<name>-adm`, edited via `set_stewards()` (`app/system.py`) / `POST /projects/<name>/stewards`. Listing anyone here is what creates the adm group, so regular members immediately lose management rights; clearing the field deletes the adm group and management reverts to all members. There is no dedicated `adm` *folder* unless a manager also creates one as a restricted subfolder.
 
-**Deletion is soft.** `archive_project()` (`app/system.py`) moves the project folder to `projects/.deleted/<name>` (root-only, `0700`; collisions get a `.N` suffix) rather than destroying it, and leaves the groups intact so it can be restored. The old destructive `delete_project` is gone. `list_projects()` skips dot-directories, so `.deleted` never appears in listings.
+**Two reversible holding states (`app/system.py`), both root-only `0700` dirs that keep groups intact and disappear from `list_projects()`:**
+- **Delete** → `projects/.deleted/<name>` via `delete_project()`, stamping a `.deleted_at` marker. Restorable with `undelete_project()`. `purge_expired()` permanently `rmtree`s entries older than `RETENTION_DAYS` (90) and drops their groups; it runs on startup in `run.py` and via `--purge-expired` (for cron).
+- **Lock** → `projects/.locked/<name>` via `lock_project()` / `unlock_project()`. No retention — kept until unlocked.
+
+`get_project()` is location-aware: it finds a project in active/`.deleted`/`.locked` and sets `Project.state` (`active`|`deleted`|`locked`) plus `days_left` for deleted ones. The detail page shows Delete+Lock when active, Undelete when deleted, Unlock when locked; editing forms are gated on `state == 'active'`. The dashboard lists held projects the user belongs to (`held_projects_for()`) with restore buttons. Restore raises if an active project of the same name exists.
 
 ## The permission model (the core domain logic)
 
