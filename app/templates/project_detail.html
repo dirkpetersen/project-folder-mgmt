@@ -28,7 +28,7 @@
       <form method="post" action="/projects/{{ project.name }}/undelete">
         <button type="submit" class="btn btn-primary">Undelete</button>
       </form>
-      {% elif project.state == 'inactive' %}
+      {% elif project.state == 'deactivated' %}
       <form method="post" action="/projects/{{ project.name }}/reactivate">
         <button type="submit" class="btn btn-primary">Reactivate</button>
       </form>
@@ -42,7 +42,7 @@
         <button type="submit" class="btn btn-ghost">Lock</button>
       </form>
       <form method="post" action="/projects/{{ project.name }}/deactivate"
-            onsubmit="return confirm('Deactivate {{ project.name }}? It moves to projects/.inactive and disappears from listings (declutter). Reactivate any time.')">
+            onsubmit="return confirm('Deactivate {{ project.name }}? It moves to projects/.deactivated and disappears from listings (declutter). Reactivate any time.')">
         <button type="submit" class="btn btn-ghost">Deactivate</button>
       </form>
       <form method="post" action="/projects/{{ project.name }}/delete"
@@ -67,9 +67,9 @@
     permanently removed in <strong>{{ project.days_left }}</strong>
     day{{ '' if project.days_left == 1 else 's' }}. Undelete to restore it.
   </div>
-  {% elif project.state == 'inactive' %}
+  {% elif project.state == 'deactivated' %}
   <div class="alert alert-warn mt-4">
-    <strong>Inactive.</strong> This project is in <code>.inactive</code>, hidden from
+    <strong>Deactivated.</strong> This project is in <code>.deactivated</code>, hidden from
     listings to reduce clutter. Reactivate to restore it.
   </div>
   {% elif project.locked %}

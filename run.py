@@ -21,6 +21,9 @@ def main():
                         help="Remove test users and exit")
     parser.add_argument("--purge-expired", action="store_true",
                         help="Purge deleted projects past the 90-day retention and exit")
+    parser.add_argument("--deactivate", type=int, metavar="DAYS",
+                        help="Deactivate active projects with no file activity in DAYS "
+                             "(move to .deactivated) and exit, e.g. --deactivate 90")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true",
@@ -47,6 +50,13 @@ def main():
         from app.system import purge_expired
         purged = purge_expired()
         print(f"Purged {len(purged)} expired deleted project(s): {', '.join(purged) or 'none'}")
+        sys.exit(0)
+
+    if args.deactivate is not None:
+        from app.system import deactivate_inactive
+        done = deactivate_inactive(args.deactivate)
+        print(f"Deactivated {len(done)} project(s) inactive >{args.deactivate}d: "
+              f"{', '.join(done) or 'none'}")
         sys.exit(0)
 
     # Ensure the project root exists (./projects by default)

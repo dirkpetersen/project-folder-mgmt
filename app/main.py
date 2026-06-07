@@ -129,7 +129,7 @@ async def dashboard(request: Request):
         "username": username,
         "visible_projects": visible_projects,
         "deleted_projects": [p for p in held if p.state == "deleted"],
-        "inactive_projects": [p for p in held if p.state == "inactive"],
+        "deactivated_projects": [p for p in held if p.state == "deactivated"],
     })
 
 

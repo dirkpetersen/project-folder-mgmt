@@ -40,7 +40,7 @@ METADATA_FIELDS = ("pi_lead", "department", "description", "cost_id")  # free-te
 # Deleted items are purged from disk after RETENTION_DAYS; deactivated items are
 # moved aside to declutter the listing and kept until reactivated.
 DELETED_DIR = ".deleted"
-INACTIVE_DIR = ".inactive"
+DEACTIVATED_DIR = ".deactivated"
 RETENTION_DAYS = 90
 DELETED_AT_MARKER = ".deleted_at"   # ISO timestamp written when an item is deleted
 
@@ -131,7 +131,7 @@ def subgroup(folder_name: str, area: str) -> str:
 def generate_project_id() -> str:
     """Allocate a unique xx-xx id not already used by a group or folder."""
     existing = set()
-    for sub in ("", DELETED_DIR, INACTIVE_DIR):
+    for sub in ("", DELETED_DIR, DEACTIVATED_DIR):
         d = PROJECTS_BASE / sub if sub else PROJECTS_BASE
         if d.is_dir():
             for entry in d.iterdir():
@@ -474,14 +474,58 @@ def undelete_project(project_name: str) -> None:
 
 
 def deactivate_project(project_name: str) -> None:
-    """Deactivate: move the project into projects/.inactive/<name> to declutter
+    """Deactivate: move the project into projects/.deactivated/<name> to declutter
     the listing. Hidden and inaccessible (root-only holding dir); kept until
     reactivated."""
-    _hold(PROJECTS_BASE, project_name, INACTIVE_DIR)
+    _hold(PROJECTS_BASE, project_name, DEACTIVATED_DIR)
 
 
 def reactivate_project(project_name: str) -> None:
-    _unhold(PROJECTS_BASE, project_name, INACTIVE_DIR)
+    _unhold(PROJECTS_BASE, project_name, DEACTIVATED_DIR)
+
+
+def project_last_activity(project_dir: Path) -> datetime | None:
+    """Most recent activity time across a project's content (max of access,
+    modification and metadata-change times). The holding dirs (.deleted etc.)
+    and the root-only .project.json are skipped so housekeeping doesn't count as
+    activity. Returns None if the tree can't be read.
+
+    Uses the max of access (atime) and modification (mtime) times. ctime is
+    deliberately excluded — it updates on any chmod/chown (e.g. our own
+    provisioning or lock/unlock) and can't be set back, so it would make every
+    project look perpetually active. Note: on noatime/relatime mounts reads may
+    not bump atime, so this effectively measures last modification.
+    """
+    latest = 0.0
+    found = False
+    for child in _content_children(project_dir):
+        for p in _iter_tree(child):
+            try:
+                st = os.stat(p)
+            except FileNotFoundError:
+                continue
+            found = True
+            latest = max(latest, st.st_atime, st.st_mtime)
+    if not found:
+        return None
+    return datetime.fromtimestamp(latest, tz=timezone.utc)
+
+
+def deactivate_inactive(days: int) -> list[str]:
+    """Deactivate every active project whose most recent file activity is older
+    than `days` (moves them to .deactivated). Returns the names deactivated."""
+    if not PROJECTS_BASE.is_dir():
+        return []
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    deactivated = []
+    for entry in sorted(PROJECTS_BASE.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue
+        last = project_last_activity(entry)
+        if last is not None and last < cutoff:
+            deactivate_project(entry.name)
+            deactivated.append(entry.name)
+    return deactivated
 
 
 def lock_project(project_name: str) -> None:

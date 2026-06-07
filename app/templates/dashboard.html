@@ -113,17 +113,17 @@
   </div>
   {% endif %}
 
-  {% if inactive_projects %}
+  {% if deactivated_projects %}
   <div class="card mt-6">
     <div class="card-header">
-      <h2 class="card-title">Inactive</h2>
-      <span class="card-sub">In <code>.inactive</code> · hidden to reduce clutter, kept until reactivated</span>
+      <h2 class="card-title">Deactivated</h2>
+      <span class="card-sub">In <code>.deactivated</code> · hidden to reduce clutter, kept until reactivated</span>
     </div>
     <div class="table-wrap">
       <table class="matrix-table">
         <thead><tr><th>Project</th><th></th></tr></thead>
         <tbody>
-          {% for p in inactive_projects %}
+          {% for p in deactivated_projects %}
           <tr>
             <td><a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a></td>
             <td>

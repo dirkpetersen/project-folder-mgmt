@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.system import (
     DELETED_DIR,
-    INACTIVE_DIR,
+    DEACTIVATED_DIR,
     PROJECTS_BASE,
     RETENTION_DAYS,
     deleted_at,
@@ -86,7 +86,7 @@ class Project:
     description: str = ""       # from .project.json
     cost_id: str = ""           # from .project.json
     public: bool = False        # from .project.json; visible to everyone if true
-    state: str = "active"       # "active" | "deleted" | "inactive"
+    state: str = "active"       # "active" | "deleted" | "deactivated"
     locked: bool = False        # read-only in place
     days_left: int | None = None  # days until purge (deleted projects only)
     subfolders: list[Subfolder] = field(default_factory=list)        # active
@@ -97,8 +97,8 @@ class Project:
         """Absolute filesystem path of the project's current location."""
         if self.state == "deleted":
             return str(PROJECTS_BASE / DELETED_DIR / self.name)
-        if self.state == "inactive":
-            return str(PROJECTS_BASE / INACTIVE_DIR / self.name)
+        if self.state == "deactivated":
+            return str(PROJECTS_BASE / DEACTIVATED_DIR / self.name)
         return str(PROJECTS_BASE / self.name)
 
     @property
@@ -137,9 +137,9 @@ def _locate(project_name: str) -> tuple:
     deleted = PROJECTS_BASE / DELETED_DIR / project_name
     if deleted.is_dir():
         return deleted, "deleted"
-    inactive = PROJECTS_BASE / INACTIVE_DIR / project_name
-    if inactive.is_dir():
-        return inactive, "inactive"
+    deactivated = PROJECTS_BASE / DEACTIVATED_DIR / project_name
+    if deactivated.is_dir():
+        return deactivated, "deactivated"
     return None, None
 
 
@@ -155,7 +155,7 @@ def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
     subs = []
     for entry in sorted(project_dir.iterdir()):
         if not entry.is_dir() or entry.name.startswith(".") or entry.name in ("all", "shr", "adm"):
-            continue  # skip the shared folder, adm, and the .deleted/.inactive holding dirs
+            continue  # skip the shared folder, adm, and the .deleted/.deactivated holding dirs
         subs.append(_subfolder_from_dir(project_name, entry))
     return subs
 
@@ -273,7 +273,7 @@ def projects_visible_to(username: str) -> list[Project]:
 
 
 def _list_holding(subdir: str) -> list[Project]:
-    """Build Project objects for everything in a holding area (.deleted/.inactive)."""
+    """Build Project objects for everything in a holding area (.deleted/.deactivated)."""
     holding = PROJECTS_BASE / subdir
     if not holding.is_dir():
         return []
@@ -288,6 +288,6 @@ def _list_holding(subdir: str) -> list[Project]:
 
 
 def held_projects_for(username: str) -> list[Project]:
-    """Deleted + inactive projects the given user is a member of (for restore UI)."""
-    held = _list_holding(DELETED_DIR) + _list_holding(INACTIVE_DIR)
+    """Deleted + deactivated projects the given user is a member of (for restore UI)."""
+    held = _list_holding(DELETED_DIR) + _list_holding(DEACTIVATED_DIR)
     return [p for p in held if username in p.members]
