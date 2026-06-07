@@ -52,7 +52,7 @@ The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./proj
 
 - **Project root** `/projects/<name>`: `chown root:grp-<name>`, `chmod 2750`. Group members can traverse and see contents but not write at the root.
 - **Shared folder** `/projects/<name>/shr`: `chown root:grp-<name>`, `chmod 2770`. Full collaborative read/write for the project group. Created on day one.
-- **Restricted sibling folders** (e.g. `adm`, `mkt`, `samples`) added later: `chown root:grp-<name>-<sibling>`, `chmod 2770`. Each gets its own sub-group; users not in that sub-group cannot even see the folder (ABE).
+- **Sibling subfolders** (e.g. `mkt`, `samples`) added later, `chmod 2770`. Two flavours, decided by whether members are given (`_assign_subfolder_group` in `app/system.py`): **open** (no members) → owned by the project group `grp-<id>`, so the whole project has read/write (like a second `shr`); **restricted** (members listed) → owned by a dedicated `grp-<id>-<area>` group, hidden from non-members via ABE. `set_subfolder_members` toggles between the two and re-groups the folder + contents. `Subfolder.restricted` (from the folder's actual owning group via `dir_group`) drives the UI badge.
 - The `2` prefix (SetGID) on every folder is mandatory — it makes new files/dirs inherit the group.
 - **Never modify the root or `/shr` when adding siblings.** Siblings are deployed side-by-side, leaving existing folders untouched.
 

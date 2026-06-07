@@ -210,8 +210,10 @@
 
   <!-- Subfolders -->
   <div class="section-header mt-8">
-    <h2 class="section-title">Restricted Subfolders</h2>
-    <p class="section-sub">Subfolders are hidden from users not in their group (Samba ABE).</p>
+    <h2 class="section-title">Subfolders</h2>
+    <p class="section-sub">Leave members empty to share a subfolder read/write with the
+      whole project group. Add members to restrict it to a dedicated group — then it's
+      hidden from everyone else (Samba ABE).</p>
   </div>
 
   {% for sub in project.subfolders %}
@@ -221,6 +223,11 @@
         <h3 class="card-title">
           <span class="folder-icon">📂</span>
           /{{ sub.name }}
+          {% if sub.restricted %}
+          <span class="badge badge-sensitive">restricted</span>
+          {% else %}
+          <span class="badge badge-public">open to project</span>
+          {% endif %}
         </h3>
         <span class="card-sub">Group <code>{{ sub.group }}</code></span>
       </div>
@@ -250,7 +257,11 @@
           class="field-input"
           value="{{ sub.members | join(', ') }}"
         />
-        <p class="field-hint">Space-separated (commas or semicolons also work). These users can see and write to /{{ sub.name }}.</p>
+        <p class="field-hint">
+          Space-separated (commas or semicolons also work).
+          <strong>Leave empty</strong> to share /{{ sub.name }} read/write with the whole
+          project group; <strong>list members</strong> to restrict it to just them.
+        </p>
       </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save</button>
@@ -258,11 +269,15 @@
     </form>
     {% else %}
     <div class="card-body">
+      {% if sub.restricted %}
       <div class="chip-list">
         {% for m in sub.members %}
         <span class="chip {% if m == username %}chip-self{% endif %}">{{ m }}</span>
         {% endfor %}
       </div>
+      {% else %}
+      <p class="muted small">Open to all project members (read/write).</p>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -313,7 +328,7 @@
   <!-- Add subfolder -->
   <div class="card mt-3 card-dashed">
     <div class="card-header">
-      <h3 class="card-title">Add Restricted Subfolder</h3>
+      <h3 class="card-title">Add Subfolder</h3>
     </div>
     <form method="post"
           action="/projects/{{ project.name }}/subfolders/new"
@@ -345,7 +360,10 @@
           <button type="submit" class="btn btn-primary">Add</button>
         </div>
       </div>
-      <p class="field-hint">Creates <code>{{ project.path }}/&lt;name&gt;</code> with group <code>grp-{{ project.name }}-&lt;name&gt;</code> (chmod 2770).</p>
+      <p class="field-hint">Creates <code>{{ project.path }}/&lt;name&gt;</code> (chmod 2770).
+        <strong>No members</strong> → shared read/write with the whole project group
+        (<code>{{ project.primary_group }}</code>); <strong>members</strong> → a dedicated
+        restricted group, hidden from everyone else.</p>
     </form>
   </div>
   {% endif %}

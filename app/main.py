@@ -26,7 +26,7 @@ from app.system import (
     lock_project,
     lock_subfolder,
     set_stewards,
-    subgroup,
+    set_subfolder_members,
     sync_group_members,
     undelete_project,
     undelete_subfolder,
@@ -317,9 +317,8 @@ async def update_subfolder_members(
     members: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
-    sub_group = subgroup(project_name, folder_name)
     member_list, unknown = _split_known_users(members)
-    sync_group_members(sub_group, member_list)
+    set_subfolder_members(project_name, folder_name, member_list)
     return _redirect_project(project_name, _skipped_notice(unknown))
 
 

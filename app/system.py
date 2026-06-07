@@ -77,6 +77,14 @@ def get_group_members(group_name: str) -> list[str]:
         return []
 
 
+def dir_group(path) -> str | None:
+    """Owning group name of a directory, or None if it can't be resolved."""
+    try:
+        return grp.getgrgid(os.stat(path).st_gid).gr_name
+    except (FileNotFoundError, KeyError):
+        return None
+
+
 # ---------------------------------------------------------------------------
 # project id / group naming
 # ---------------------------------------------------------------------------
@@ -249,13 +257,43 @@ def create_project(display_name: str, members: list[str], metadata: dict | None 
     return folder_name
 
 
-def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:
-    """Create a restricted sibling folder and its dedicated sub-group."""
-    sub_group = subgroup(project_name, folder_name)
-    sync_group_members(sub_group, members)  # creates the group if needed
+def _assign_subfolder_group(project_name: str, folder_name: str, members: list[str]) -> str:
+    """Decide and prepare the owning group for a subfolder.
 
+    No members  -> the project's primary group (grp-<id>): the subfolder is
+                   open to the whole project (read/write), and any leftover
+                   dedicated group is removed.
+    Members      -> a dedicated grp-<id>-<area> group restricted to those users.
+    Returns the group name the folder should be owned by.
+    """
+    if members:
+        sub_group = subgroup(project_name, folder_name)
+        sync_group_members(sub_group, members)  # creates the group if needed
+        return sub_group
+    delete_group(subgroup(project_name, folder_name))  # no-op if it doesn't exist
+    return project_group(project_name)
+
+
+def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:
+    """Create a sibling folder. Open to the whole project group if no members are
+    given, otherwise restricted to a dedicated group."""
+    group = _assign_subfolder_group(project_name, folder_name, members)
+    _provision_dir(PROJECTS_BASE / project_name / folder_name, group, 0o2770)
+
+
+def set_subfolder_members(project_name: str, folder_name: str, members: list[str]) -> None:
+    """Re-point a subfolder's access: switch between open (whole project group)
+    and restricted (dedicated group), re-grouping the folder and its contents."""
+    group = _assign_subfolder_group(project_name, folder_name, members)
     folder_path = PROJECTS_BASE / project_name / folder_name
-    _provision_dir(folder_path, sub_group, 0o2770)
+    gid = grp.getgrnam(group).gr_gid
+    for p in [folder_path, *folder_path.rglob("*")]:
+        try:
+            os.chown(p, -1, gid)  # keep owner, set group
+        except FileNotFoundError:
+            pass
+    os.chmod(folder_path, 0o2770)
+    _set_inherit_acl(folder_path)
 
 
 def set_stewards(project_name: str, stewards: list[str]) -> None:
