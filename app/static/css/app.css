@@ -1,24 +1,25 @@
 /* ─── Reset & base ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Oregon State University theme — Beaver Orange (#DC4405) on black */
 :root {
-  --bg:          #0d0f14;
-  --bg-2:        #13161e;
-  --bg-3:        #1c202c;
-  --border:      #252a38;
-  --border-2:    #2e3447;
-  --accent:      #6366f1;
-  --accent-dark: #4f46e5;
-  --accent-glow: rgba(99,102,241,0.25);
+  --bg:          #0a0a0a;
+  --bg-2:        #141414;
+  --bg-3:        #1f1f1f;
+  --border:      #2a2a2a;
+  --border-2:    #383838;
+  --accent:      #dc4405;   /* Beaver Orange */
+  --accent-dark: #b8360a;
+  --accent-glow: rgba(220,68,5,0.30);
   --danger:      #ef4444;
   --danger-dark: #dc2626;
   --success:     #22c55e;
-  --text:        #e2e8f0;
-  --text-2:      #94a3b8;
-  --text-3:      #64748b;
+  --text:        #f1f1f1;
+  --text-2:      #a3a3a3;
+  --text-3:      #6b6b6b;
   --radius:      10px;
   --radius-sm:   6px;
-  --shadow:      0 4px 24px rgba(0,0,0,0.5);
+  --shadow:      0 4px 24px rgba(0,0,0,0.6);
   --font:        'Inter', system-ui, sans-serif;
 }
 
@@ -33,7 +34,7 @@ html, body {
 }
 
 a { color: var(--accent); text-decoration: none; }
-a:hover { color: #818cf8; }
+a:hover { color: #ff7a45; }
 
 code {
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -42,7 +43,7 @@ code {
   border: 1px solid var(--border);
   padding: 1px 5px;
   border-radius: 4px;
-  color: #a5b4fc;
+  color: #ffb38a;
 }
 
 /* ─── Topbar ────────────────────────────────────────────────────────── */
@@ -50,7 +51,7 @@ code {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(13,15,20,0.85);
+  background: rgba(10,10,10,0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -244,7 +245,7 @@ code {
   vertical-align: top;
 }
 .matrix-table tr:last-child td { border-bottom: none; }
-.matrix-table tr.row-mine { background: rgba(99,102,241,0.04); }
+.matrix-table tr.row-mine { background: rgba(220,68,5,0.04); }
 .matrix-table tr:hover { background: var(--bg-3); }
 
 .project-link {
@@ -272,9 +273,9 @@ code {
   color: var(--text-2);
 }
 .chip-self {
-  background: rgba(99,102,241,0.15);
-  border-color: rgba(99,102,241,0.4);
-  color: #a5b4fc;
+  background: rgba(220,68,5,0.15);
+  border-color: rgba(220,68,5,0.4);
+  color: #ffb38a;
 }
 .chip-manager {
   background: rgba(34,197,94,0.1);
@@ -282,9 +283,9 @@ code {
   color: #86efac;
 }
 .chip-self.chip-manager {
-  background: rgba(99,102,241,0.2);
+  background: rgba(220,68,5,0.2);
   border-color: var(--accent);
-  color: #c7d2fe;
+  color: #ffd0b3;
 }
 .chip-folder {
   background: rgba(245,158,11,0.1);
@@ -468,7 +469,7 @@ code {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.18), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220,68,5,0.18), transparent),
     var(--bg);
 }
 .auth-card {
@@ -521,9 +522,9 @@ code {
   transition: all 0.15s ease;
 }
 .chip-user:hover {
-  background: rgba(99,102,241,0.15);
+  background: rgba(220,68,5,0.15);
   border-color: var(--accent);
-  color: #c7d2fe;
+  color: #ffd0b3;
 }
 
 /* ─── Empty state ───────────────────────────────────────────────────── */
