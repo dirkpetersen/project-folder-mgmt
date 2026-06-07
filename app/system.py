@@ -17,7 +17,7 @@ GROUP_PREFIX = "grp-"
 
 # Per-project metadata file, stored at the project root. Readable by root only.
 METADATA_FILE = ".project.json"
-METADATA_FIELDS = ("pi_lead", "description", "cost_id")  # free-text fields
+METADATA_FIELDS = ("pi_lead", "department", "description", "cost_id")  # free-text fields
 
 
 # ---------------------------------------------------------------------------

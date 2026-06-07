@@ -60,10 +60,16 @@ class Project:
     adm_group: str | None       # grp-<name>-adm if it exists
     adm_members: list[str]      # members of adm group (or [])
     pi_lead: str = ""           # from .project.json
+    department: str = ""        # from .project.json
     description: str = ""       # from .project.json
     cost_id: str = ""           # from .project.json
     public: bool = False        # from .project.json; visible to everyone if true
     subfolders: list[Subfolder] = field(default_factory=list)
+
+    @property
+    def path(self) -> str:
+        """Absolute filesystem path of the project root."""
+        return str(PROJECTS_BASE / self.name)
 
     @property
     def managers(self) -> list[str]:
@@ -125,6 +131,7 @@ def get_project(project_name: str) -> Project | None:
         adm_group=adm_group,
         adm_members=adm_members,
         pi_lead=meta.get("pi_lead", ""),
+        department=meta.get("department", ""),
         description=meta.get("description", ""),
         cost_id=meta.get("cost_id", ""),
         public=meta.get("public", False),

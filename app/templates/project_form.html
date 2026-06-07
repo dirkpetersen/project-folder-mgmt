@@ -45,6 +45,18 @@
       </div>
 
       <div class="field">
+        <label class="field-label" for="department">Department</label>
+        <input
+          id="department"
+          name="department"
+          type="text"
+          class="field-input"
+          placeholder="e.g. Microbiology"
+          value="{{ form.get('department','') }}"
+        />
+      </div>
+
+      <div class="field">
         <label class="field-label" for="description">Description</label>
         <textarea
           id="description"

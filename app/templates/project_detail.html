@@ -16,7 +16,7 @@
         {% endif %}
       </div>
       <p class="page-sub">
-        Primary group: <code>{{ project.primary_group }}</code>
+        Path: <code>{{ project.path }}</code>
         {% if project.adm_group %} · Admin group: <code>{{ project.adm_group }}</code>{% endif %}
       </p>
     </div>
@@ -42,6 +42,11 @@
         <label class="field-label" for="pi_lead">PI / Lead</label>
         <input id="pi_lead" name="pi_lead" type="text" class="field-input"
                value="{{ project.pi_lead }}" placeholder="Dr. Jane Smith" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="department">Department</label>
+        <input id="department" name="department" type="text" class="field-input"
+               value="{{ project.department }}" placeholder="e.g. Microbiology" />
       </div>
       <div class="field">
         <label class="field-label" for="description">Description</label>
@@ -71,6 +76,7 @@
     <div class="card-body">
       <dl class="meta-list">
         <dt>PI / Lead</dt><dd>{{ project.pi_lead or "—" }}</dd>
+        <dt>Department</dt><dd>{{ project.department or "—" }}</dd>
         <dt>Description</dt><dd>{{ project.description or "—" }}</dd>
         <dt>Cost ID</dt><dd>{{ project.cost_id or "—" }}</dd>
         <dt>Visibility</dt><dd>{{ "Public" if project.public else "Members only" }}</dd>

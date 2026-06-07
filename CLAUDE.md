@@ -60,7 +60,7 @@ Deliberately **no ACL on the gatekeeper root** (`2750`): it has no user-created 
 
 ## Project metadata
 
-Each project stores extra fields in a `.project.json` file at its root, written `chown root:root` / `chmod 0600` so **only root can read it** — it is not exposed via the project group. The free-text fields (`pi_lead`, `description`, `cost_id`) are listed in `METADATA_FIELDS`; there is also a boolean `public` flag handled separately in `read_metadata`/`write_metadata` (`app/system.py`). All are surfaced on the `Project` dataclass and editable by managers via `POST /projects/<name>/metadata`. Reads tolerate a missing or malformed file by returning defaults (empty strings, `public=False`).
+Each project stores extra fields in a `.project.json` file at its root, written `chown root:root` / `chmod 0600` so **only root can read it** — it is not exposed via the project group. The free-text fields (`pi_lead`, `department`, `description`, `cost_id`) are listed in `METADATA_FIELDS`; there is also a boolean `public` flag handled separately in `read_metadata`/`write_metadata` (`app/system.py`). All are surfaced on the `Project` dataclass and editable by managers via `POST /projects/<name>/metadata`. Reads tolerate a missing or malformed file by returning defaults (empty strings, `public=False`).
 
 ## Visibility
 

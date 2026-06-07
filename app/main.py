@@ -139,6 +139,7 @@ async def do_create_project(
     name: Annotated[str, Form()],
     members: Annotated[str, Form()] = "",
     pi_lead: Annotated[str, Form()] = "",
+    department: Annotated[str, Form()] = "",
     description: Annotated[str, Form()] = "",
     cost_id: Annotated[str, Form()] = "",
     public: Annotated[str, Form()] = "",
@@ -147,7 +148,8 @@ async def do_create_project(
     is_public = bool(public)
     form = {
         "name": name, "members": members,
-        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "pi_lead": pi_lead, "department": department,
+        "description": description, "cost_id": cost_id,
         "public": is_public,
     }
     try:
@@ -170,7 +172,8 @@ async def do_create_project(
     if username not in member_list:
         member_list.insert(0, username)
     create_project(clean_name, member_list, {
-        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "pi_lead": pi_lead, "department": department,
+        "description": description, "cost_id": cost_id,
         "public": is_public,
     })
     return RedirectResponse(url=f"/projects/{clean_name}", status_code=303)
@@ -230,13 +233,15 @@ async def update_metadata(
     request: Request,
     project_name: str,
     pi_lead: Annotated[str, Form()] = "",
+    department: Annotated[str, Form()] = "",
     description: Annotated[str, Form()] = "",
     cost_id: Annotated[str, Form()] = "",
     public: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
     write_metadata(project_name, {
-        "pi_lead": pi_lead, "description": description, "cost_id": cost_id,
+        "pi_lead": pi_lead, "department": department,
+        "description": description, "cost_id": cost_id,
         "public": bool(public),
     })
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
