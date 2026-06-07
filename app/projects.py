@@ -8,15 +8,16 @@ from datetime import datetime, timezone
 
 from app.system import (
     DELETED_DIR,
-    GROUP_PREFIX,
     LOCKED_DIR,
-    MAX_GROUP_NAME,
     PROJECTS_BASE,
     RETENTION_DAYS,
     deleted_at,
     get_group_members,
     group_exists,
+    project_group,
     read_metadata,
+    split_project_name,
+    subgroup,
 )
 
 # ---------------------------------------------------------------------------
@@ -28,52 +29,28 @@ def _normalize(raw: str) -> str:
     return re.sub(r"[^a-z0-9-]", "", raw.strip().lower().replace(" ", "-"))
 
 
-# The primary group (grp-<name>) must fit the system group-name limit. Sub-groups
-# (grp-<name>-adm, grp-<name>-<area>) need extra room and are guarded separately
-# at steward/subfolder creation time — a long name simply can't have them.
-PROJECT_NAME_MAX = MAX_GROUP_NAME - len(GROUP_PREFIX)
-
-
-def steward_group_fits(project_name: str) -> bool:
-    """Whether grp-<name>-adm fits — i.e. the project can have data stewards."""
-    return len(f"{GROUP_PREFIX}{project_name}-adm") <= MAX_GROUP_NAME
-
-
 def validate_project_name(raw: str) -> str:
-    """Normalise and validate. Returns the clean name or raises ValueError."""
+    """Normalise and validate. Returns the clean name or raises ValueError.
+
+    Group names are keyed on the short project id, not the name, so the name has
+    no group-length constraint — only the original length/character rules.
+    """
     name = _normalize(raw)
     if len(name) <= 10:
         raise ValueError("Project name must be longer than 10 characters.")
     if len(name) >= 50:
         raise ValueError("Project name must be shorter than 50 characters.")
-    # The primary group (grp-<name>) must fit the system's group-name limit.
-    if len(name) > PROJECT_NAME_MAX:
-        raise ValueError(
-            f"Project name is too long: keep it to {PROJECT_NAME_MAX} characters so its "
-            f"UNIX group 'grp-{name}' stays within the {MAX_GROUP_NAME}-character system limit."
-        )
     return name
 
 
 def validate_subfolder_name(raw: str, project_name: str = "") -> str:
+    # No length cap needed: the group name is keyed on the short project id and
+    # is auto-truncated (with a uniqueness hash) by system.subgroup() if needed.
     name = _normalize(raw)
     if not name:
         raise ValueError("Subfolder name cannot be empty.")
     if name == "shr":
         raise ValueError("'shr' is reserved.")
-    if project_name:
-        group = f"{GROUP_PREFIX}{project_name}-{name}"
-        if len(group) > MAX_GROUP_NAME:
-            avail = MAX_GROUP_NAME - len(f"{GROUP_PREFIX}{project_name}-")
-            if avail < 1:
-                raise ValueError(
-                    "This project's name is too long to add subfolders — its group "
-                    f"prefix already fills the {MAX_GROUP_NAME}-character group-name limit."
-                )
-            raise ValueError(
-                f"Subfolder name too long: keep it to {avail} character(s) so the group "
-                f"name '{group}' stays within the {MAX_GROUP_NAME}-character limit."
-            )
     return name
 
 
@@ -90,11 +67,13 @@ class Subfolder:
 
 @dataclass
 class Project:
-    name: str
-    primary_group: str
+    name: str                   # on-disk folder name: <display_name>_<id>
+    primary_group: str          # grp-<id>
     members: list[str]          # members of primary group
-    adm_group: str | None       # grp-<name>-adm if it exists
+    adm_group: str | None       # grp-<id>-adm if it exists
     adm_members: list[str]      # members of adm group (or [])
+    display_name: str = ""      # name without the id suffix
+    project_id: str = ""        # the xx-xx id ("" for legacy projects)
     pi_lead: str = ""           # from .project.json
     department: str = ""        # from .project.json
     description: str = ""       # from .project.json
@@ -167,7 +146,7 @@ def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
     for entry in sorted(project_dir.iterdir()):
         if not entry.is_dir() or entry.name in ("shr", "adm"):
             continue
-        sub_group = f"{GROUP_PREFIX}{project_name}-{entry.name}"
+        sub_group = subgroup(project_name, entry.name)
         subs.append(Subfolder(
             name=entry.name,
             group=sub_group,
@@ -177,17 +156,18 @@ def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
 
 
 def get_project(project_name: str) -> Project | None:
-    primary_group = f"{GROUP_PREFIX}{project_name}"
+    primary_group = project_group(project_name)
     if not group_exists(primary_group):
         return None
     project_dir, state = _locate(project_name)
     if state is None:
         return None  # group exists but no folder anywhere
     members = get_group_members(primary_group)
-    adm_group_name = f"{GROUP_PREFIX}{project_name}-adm"
+    adm_group_name = subgroup(project_name, "adm")
     adm_group = adm_group_name if group_exists(adm_group_name) else None
     adm_members = get_group_members(adm_group_name) if adm_group else []
     meta = read_metadata(project_dir)
+    display_name, pid = split_project_name(project_name)
 
     days_left = None
     if state == "deleted":
@@ -202,6 +182,8 @@ def get_project(project_name: str) -> Project | None:
         members=members,
         adm_group=adm_group,
         adm_members=adm_members,
+        display_name=display_name,
+        project_id=pid or "",
         pi_lead=meta.get("pi_lead", ""),
         department=meta.get("department", ""),
         description=meta.get("description", ""),

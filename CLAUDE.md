@@ -54,7 +54,11 @@ The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./proj
 - The `2` prefix (SetGID) on every folder is mandatory — it makes new files/dirs inherit the group.
 - **Never modify the root or `/shr` when adding siblings.** Siblings are deployed side-by-side, leaving existing folders untouched.
 
-Group naming convention: primary group `grp-<project>`; restricted sub-groups `grp-<project>-<area>`.
+### Project id & group naming
+
+Every project gets a short internal id `xx-xx` (each char `[a-z0-9]`, e.g. `a3-f1`), generated uniquely at creation (`generate_project_id`). The on-disk folder is **`<name>_<id>`** (the display name never contains `_`, so `split_project_name()` recovers both). **Groups are keyed on the id, not the name**, so they stay short and always fit the platform limit: primary `grp-<id>`, stewards `grp-<id>-adm`, restricted subfolders `grp-<id>-<area>` — all built via `project_group()` / `subgroup()` in `app/system.py`. The id is stored in `.project.json` (`project_id`) and, in the UI, appears only as part of the project name (the folder name). Legacy projects created before ids (no `_<id>` suffix) fall back to `grp-<name>`.
+
+`subgroup()` guarantees the result is ≤ `MAX_GROUP_NAME` (32 on Linux, larger on LDAP — env-overridable): if `grp-<id>-<area>` is too long it truncates and appends a short deterministic hash of the full name, so distinct areas never collapse to the same group, and it's reconstructable from the folder + area (the folder keeps the full readable area name).
 
 ### Default ACLs enforce group read/write (the one ACL use)
 

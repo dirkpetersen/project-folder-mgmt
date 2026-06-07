@@ -14,12 +14,10 @@ from app.projects import (
     get_project,
     held_projects_for,
     projects_visible_to,
-    steward_group_fits,
     validate_project_name,
     validate_subfolder_name,
 )
 from app.system import (
-    MAX_GROUP_NAME,
     TEST_USERS,
     create_project,
     create_subfolder,
@@ -27,6 +25,7 @@ from app.system import (
     delete_subfolder,
     lock_project,
     set_stewards,
+    subgroup,
     sync_group_members,
     undelete_project,
     unlock_project,
@@ -140,7 +139,6 @@ async def new_project_page(request: Request):
         "username": username,
         "error": None,
         "form": {},
-        "group_name_max": MAX_GROUP_NAME,
     })
 
 
@@ -170,26 +168,19 @@ async def do_create_project(
             "username": username,
             "error": str(e),
             "form": form,
-            "group_name_max": MAX_GROUP_NAME,
         }, status_code=400)
 
-    if get_project(clean_name):
-        return templates.TemplateResponse(request, "project_form.html", {
-            "username": username,
-            "error": f"Project '{clean_name}' already exists.",
-            "form": form,
-            "group_name_max": MAX_GROUP_NAME,
-        }, status_code=400)
-
+    # Each project gets a unique internal id, so duplicate display names are
+    # fine — the folder name (<name>_<id>) and groups (grp-<id>) stay distinct.
     member_list = _parse_usernames(members)
     if username not in member_list:
         member_list.insert(0, username)
-    create_project(clean_name, member_list, {
+    folder_name = create_project(clean_name, member_list, {
         "pi_lead": pi_lead, "department": department,
         "description": description, "cost_id": cost_id,
         "public": is_public,
     })
-    return RedirectResponse(url=f"/projects/{clean_name}", status_code=303)
+    return RedirectResponse(url=f"/projects/{folder_name}", status_code=303)
 
 
 # ---------------------------------------------------------------------------
@@ -235,12 +226,6 @@ async def update_stewards(
 ):
     username, _ = require_manager(request, project_name)
     steward_list = _parse_usernames(stewards)
-    # Setting stewards needs the grp-<name>-adm group; reject early if it won't fit.
-    if steward_list and not steward_group_fits(project_name):
-        msg = (f"Cannot set data stewards: the group 'grp-{project_name}-adm' would "
-               f"exceed the {MAX_GROUP_NAME}-character system limit for group names.")
-        return RedirectResponse(
-            url=f"/projects/{project_name}?error={quote(msg)}", status_code=303)
     # If I'm designating stewards, include myself so I keep management rights.
     if steward_list and username not in steward_list:
         steward_list.append(username)
@@ -327,7 +312,7 @@ async def update_subfolder_members(
     members: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
-    sub_group = f"grp-{project_name}-{folder_name}"
+    sub_group = subgroup(project_name, folder_name)
     sync_group_members(sub_group, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 

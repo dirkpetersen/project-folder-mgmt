@@ -3,9 +3,12 @@ Privileged system operations — mkdir, chown, chmod, group and user management.
 This module is called from a process that runs as root.
 """
 import grp
+import hashlib
 import json
 import os
 import pwd
+import random
+import re
 import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -15,6 +18,13 @@ from pathlib import Path
 # launched from. Override with the PROJECTS_BASE environment variable.
 PROJECTS_BASE = Path(os.environ.get("PROJECTS_BASE", "projects")).resolve()
 GROUP_PREFIX = "grp-"
+
+# Every project gets a short internal id of the form xx-xx (each x a lowercase
+# letter or digit). The on-disk folder is "<name>_<id>"; UNIX groups are keyed
+# on the id (grp-<id>, grp-<id>-adm, grp-<id>-<area>) so group names stay short
+# and always fit MAX_GROUP_NAME regardless of how long the project name is.
+PROJECT_ID_RE = re.compile(r"[a-z0-9]{2}-[a-z0-9]{2}")
+_ID_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 # Linux limits group (and user) names. shadow-utils rejects names longer than
 # this, so every group we create — grp-<project> and grp-<project>-<area> —
@@ -65,6 +75,61 @@ def get_group_members(group_name: str) -> list[str]:
         return list(grp.getgrnam(group_name).gr_mem)
     except KeyError:
         return []
+
+
+# ---------------------------------------------------------------------------
+# project id / group naming
+# ---------------------------------------------------------------------------
+
+def split_project_name(folder_name: str) -> tuple:
+    """Split a folder name into (display_name, project_id).
+
+    New projects are stored as "<name>_<id>"; project_id is None for legacy
+    projects created before ids existed (display names never contain '_').
+    """
+    base, sep, tail = folder_name.rpartition("_")
+    if sep and PROJECT_ID_RE.fullmatch(tail):
+        return base, tail
+    return folder_name, None
+
+
+def project_group(folder_name: str) -> str:
+    """Primary group for a project: grp-<id> (or grp-<folder> for legacy ones)."""
+    _, pid = split_project_name(folder_name)
+    return f"{GROUP_PREFIX}{pid}" if pid else f"{GROUP_PREFIX}{folder_name}"
+
+
+def subgroup(folder_name: str, area: str) -> str:
+    """Group name for a sub-area (adm, or a restricted subfolder), always within
+    the platform's group-name limit (MAX_GROUP_NAME — 32 on Linux, larger on
+    LDAP). grp-<id>-<area> is used verbatim when it fits; if it is too long the
+    name is cut and a short deterministic hash of the full name is appended, so
+    two distinct areas can never collapse to the same group. It is reconstructed
+    deterministically from (folder, area), so the on-disk folder keeps the full
+    readable area name while the group stays short."""
+    name = f"{project_group(folder_name)}-{area}"
+    if len(name) <= MAX_GROUP_NAME:
+        return name
+    h = hashlib.sha1(name.encode()).hexdigest()[:6]
+    return f"{name[:MAX_GROUP_NAME - len(h) - 1]}-{h}"
+
+
+def generate_project_id() -> str:
+    """Allocate a unique xx-xx id not already used by a group or folder."""
+    existing = set()
+    for sub in ("", DELETED_DIR, LOCKED_DIR):
+        d = PROJECTS_BASE / sub if sub else PROJECTS_BASE
+        if d.is_dir():
+            for entry in d.iterdir():
+                _, pid = split_project_name(entry.name)
+                if pid:
+                    existing.add(pid)
+    for _ in range(10000):
+        pid = (random.choice(_ID_ALPHABET) + random.choice(_ID_ALPHABET) + "-"
+               + random.choice(_ID_ALPHABET) + random.choice(_ID_ALPHABET))
+        if pid not in existing and not group_exists(f"{GROUP_PREFIX}{pid}"):
+            return pid
+    raise RuntimeError("Could not allocate a unique project id.")
 
 
 # ---------------------------------------------------------------------------
@@ -148,33 +213,45 @@ def read_metadata(project_dir: Path) -> dict:
         data = {}
     meta = {k: str(data.get(k, "")) for k in METADATA_FIELDS}
     meta["public"] = bool(data.get("public", False))
+    meta["project_id"] = str(data.get("project_id", ""))
     return meta
 
 
 def write_metadata(project_name: str, metadata: dict) -> None:
-    """Write .project.json at the project root, owned by root and mode 0600."""
+    """Write .project.json at the project root, owned by root and mode 0600.
+
+    The project_id is always (re)derived from the folder name so it is recorded
+    in the file and never lost when other metadata is edited.
+    """
     path = PROJECTS_BASE / project_name / METADATA_FILE
     data = {k: str(metadata.get(k, "")).strip() for k in METADATA_FIELDS}
     data["public"] = bool(metadata.get("public", False))
+    _, pid = split_project_name(project_name)
+    if pid:
+        data["project_id"] = pid
     path.write_text(json.dumps(data, indent=2))
     os.chown(path, 0, 0)
     os.chmod(path, 0o600)
 
 
-def create_project(project_name: str, members: list[str], metadata: dict | None = None) -> None:
-    """Create the project root + /shr, the primary group, and set membership."""
-    primary_group = f"{GROUP_PREFIX}{project_name}"
+def create_project(display_name: str, members: list[str], metadata: dict | None = None) -> str:
+    """Create a project: allocate an id, make <name>_<id>/ + /shr, and the
+    grp-<id> primary group. Returns the on-disk folder name (<name>_<id>)."""
+    pid = generate_project_id()
+    folder_name = f"{display_name}_{pid}"
+    primary_group = f"{GROUP_PREFIX}{pid}"
     sync_group_members(primary_group, members)  # creates the group if needed
 
-    root_path = PROJECTS_BASE / project_name
+    root_path = PROJECTS_BASE / folder_name
     _provision_dir(root_path, primary_group, 0o2750)
     _provision_dir(root_path / "shr", primary_group, 0o2770)
-    write_metadata(project_name, metadata or {})
+    write_metadata(folder_name, metadata or {})
+    return folder_name
 
 
 def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:
     """Create a restricted sibling folder and its dedicated sub-group."""
-    sub_group = f"{GROUP_PREFIX}{project_name}-{folder_name}"
+    sub_group = subgroup(project_name, folder_name)
     sync_group_members(sub_group, members)  # creates the group if needed
 
     folder_path = PROJECTS_BASE / project_name / folder_name
@@ -182,12 +259,12 @@ def create_subfolder(project_name: str, folder_name: str, members: list[str]) ->
 
 
 def set_stewards(project_name: str, stewards: list[str]) -> None:
-    """Set the data stewards (project admins) = members of grp-<name>-adm.
+    """Set the data stewards (project admins) = members of the adm sub-group.
 
     If stewards is non-empty, only they may manage the project. If it is empty,
     the adm group is removed and management reverts to all project members.
     """
-    adm_group = f"{GROUP_PREFIX}{project_name}-adm"
+    adm_group = subgroup(project_name, "adm")
     # Only real accounts can be stewards. If none of the entered names exist,
     # don't leave an empty adm group behind (that would lock everyone out of
     # management); delete it so management reverts to all members.
@@ -300,9 +377,9 @@ def purge_expired(retention_days: int = RETENTION_DAYS) -> list[str]:
 
 def _delete_project_groups(project_name: str) -> None:
     """Remove a project's primary group and all of its sub-groups."""
+    base = project_group(project_name)
     for g in grp.getgrall():
-        if g.gr_name == f"{GROUP_PREFIX}{project_name}" or \
-           g.gr_name.startswith(f"{GROUP_PREFIX}{project_name}-"):
+        if g.gr_name == base or g.gr_name.startswith(f"{base}-"):
             delete_group(g.gr_name)
 
 
@@ -310,7 +387,7 @@ def delete_subfolder(project_name: str, folder_name: str) -> None:
     folder_path = PROJECTS_BASE / project_name / folder_name
     if folder_path.exists():
         shutil.rmtree(folder_path)
-    delete_group(f"{GROUP_PREFIX}{project_name}-{folder_name}")
+    delete_group(subgroup(project_name, folder_name))
 
 
 # ---------------------------------------------------------------------------
