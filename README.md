@@ -125,7 +125,14 @@ membership alone; there is no separate data store.
 | ---------------------------- | -------------------------- | ------ | ------------------------------------------------------------ |
 | `/projects/<name>`           | `root:grp-<name>`          | `2750` | Group can traverse and read; no write at the root.           |
 | `/projects/<name>/shr`       | `root:grp-<name>`          | `2770` | Full collaborative read/write. Created on day one.           |
-| `/projects/<name>/<sibling>` | `root:grp-<name>-<sibling>`| `2770` | Restricted; invisible (via ABE) to users outside its group.  |
+| `/projects/<name>/<sibling>` | `root:grp-<name>-<sibling>`| `2770` | Restricted; **still visible** to all project members, but only its group can read/write the contents. |
+
+Visibility policy: **whole projects are hidden from non-members** (the `2750`
+root denies `other`, so ABE hides projects a user can't access), but **every
+subfolder stays visible to all project members**. A restricted subfolder grants
+the primary project group traverse-only (`setfacl -m g:grp-<name>:--x`) so the
+folder shows up and can be entered, while its contents stay readable only by its
+dedicated group.
 
 The `2` prefix (SetGID) is mandatory on every folder so new files inherit the
 group. Adding a sibling **never** touches the root or `shr` — siblings are
@@ -207,14 +214,21 @@ chmod 2770 /projects/banana/adm
 
 chown root:grp-banana-mkt /projects/banana/mkt
 chmod 2770 /projects/banana/mkt
+
+# Keep restricted siblings VISIBLE to all project members (traverse-only), so
+# they show in the listing but their contents stay group-only:
+setfacl -m g:grp-banana:--x /projects/banana/adm
+setfacl -m g:grp-banana:--x /projects/banana/mkt
 ```
 
-ABE evaluates the UNIX permissions on the fly:
+The result:
 
-- Standard users (only in `grp-banana`) see **only** `/shr`; `/adm` and `/mkt`
-  are invisible.
-- Managers (also in `grp-banana-adm`) additionally see `/adm`.
-- Marketing users (also in `grp-banana-mkt`) additionally see `/mkt`.
+- Every project member (in `grp-banana`) **sees** `/shr`, `/adm`, and `/mkt`.
+- They have full read/write in `/shr`. They can see `/adm` and `/mkt` exist and
+  enter them, but cannot list or read their contents unless they're in
+  `grp-banana-adm` / `grp-banana-mkt`.
+- Non-members don't see the `banana` project at all (the `2750` root denies them,
+  and ABE hides projects a user can't access).
 
 ### Why this scales
 

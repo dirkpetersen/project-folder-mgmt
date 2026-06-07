@@ -280,11 +280,31 @@ def _assign_subfolder_group(project_name: str, folder_name: str, members: list[s
     return project_group(project_name)
 
 
+def _set_subfolder_visibility(folder_path: Path, project_name: str, restricted: bool) -> None:
+    """Keep every subfolder visible to ALL project members (so it's never hidden
+    by Samba ABE), while protecting a restricted folder's contents.
+
+    Restricted folder (owned by a dedicated group): grant the project's primary
+    group traverse-only (--x) on the folder. Members not in the dedicated group
+    can then see and enter the folder, but can't list it or read any file (all
+    contents are owned by the dedicated group, others ---). Open folders are
+    owned by the primary group already, so we just drop any leftover entry.
+    """
+    primary = project_group(project_name)
+    if restricted:
+        _run(["setfacl", "-m", f"g:{primary}:--x", str(folder_path)])
+    else:
+        subprocess.run(["setfacl", "-x", f"g:{primary}", str(folder_path)],
+                       capture_output=True, text=True)
+
+
 def create_subfolder(project_name: str, folder_name: str, members: list[str]) -> None:
     """Create a sibling folder. Open to the whole project group if no members are
-    given, otherwise restricted to a dedicated group."""
+    given, otherwise restricted to a dedicated group (still visible to all)."""
     group = _assign_subfolder_group(project_name, folder_name, members)
-    _provision_dir(PROJECTS_BASE / project_name / folder_name, group, 0o2770)
+    folder_path = PROJECTS_BASE / project_name / folder_name
+    _provision_dir(folder_path, group, 0o2770)
+    _set_subfolder_visibility(folder_path, project_name, restricted=bool(members))
 
 
 def set_subfolder_members(project_name: str, folder_name: str, members: list[str]) -> None:
@@ -300,6 +320,7 @@ def set_subfolder_members(project_name: str, folder_name: str, members: list[str
             pass
     os.chmod(folder_path, 0o2770)
     _set_inherit_acl(folder_path)
+    _set_subfolder_visibility(folder_path, project_name, restricted=bool(members))
 
 
 def set_stewards(project_name: str, stewards: list[str]) -> None:

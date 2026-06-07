@@ -224,9 +224,11 @@
   <!-- Subfolders -->
   <div class="section-header mt-8">
     <h2 class="section-title">Subfolders</h2>
-    <p class="section-sub">Leave members empty to share a subfolder read/write with the
-      whole project group. Add members to restrict it to a dedicated group — then it's
-      hidden from everyone else (Samba ABE).</p>
+    <p class="section-sub">Every subfolder stays visible to all project members.
+      Leave members empty to share it read/write with the whole project group; add
+      members to limit who can open it to a dedicated group — others still see the
+      folder but can't read its contents. (Whole projects, by contrast, are hidden
+      from non-members.)</p>
   </div>
 
   {% for sub in project.subfolders %}
@@ -385,7 +387,7 @@
       <p class="field-hint">Creates <code>{{ project.path }}/&lt;name&gt;</code> (chmod 2770).
         <strong>No members</strong> → shared read/write with the whole project group
         (<code>{{ project.primary_group }}</code>); <strong>members</strong> → a dedicated
-        restricted group, hidden from everyone else.</p>
+        group that can open it. Either way the folder stays visible to all project members.</p>
     </form>
   </div>
   {% endif %}
