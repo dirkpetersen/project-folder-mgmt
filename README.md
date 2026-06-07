@@ -33,19 +33,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Bootstrap the 10 test users (apple, banana, ...)
-sudo ./run.py --create-users
+sudo .venv/bin/python ./run.py --create-users
 # → Created 10 test user(s): apple, banana, strawberry, orange, blueberry,
 #   mango, watermelon, pineapple, grape, peach
 
 # 4. Start the app
-sudo ./run.py --host 127.0.0.1 --port 8080
+sudo .venv/bin/python ./run.py --host 127.0.0.1 --port 8080
 ```
 
 Then open <http://127.0.0.1:8080> and log in.
-
-> **Note on `sudo` + venv:** if `sudo` resets your `PATH`, run the venv's
-> interpreter explicitly so it uses the installed packages:
-> `sudo .venv/bin/python run.py --host 127.0.0.1 --port 8080`
 
 ### Logging in
 
@@ -60,7 +56,7 @@ mango   watermelon   pineapple   grape   peach
 When you're done testing, remove the users and their groups:
 
 ```bash
-sudo ./run.py --remove-users
+sudo .venv/bin/python ./run.py --remove-users
 ```
 
 ---
@@ -68,11 +64,11 @@ sudo ./run.py --remove-users
 ## Commands
 
 ```bash
-sudo ./run.py                              # serve on 0.0.0.0:8000 (default)
-sudo ./run.py --host 127.0.0.1 --port 8080 # custom bind address
-sudo ./run.py --reload                     # dev mode with auto-reload
-sudo ./run.py --create-users               # bootstrap the test users and exit
-sudo ./run.py --remove-users               # delete the test users and exit
+sudo .venv/bin/python ./run.py                              # serve on 0.0.0.0:8000 (default)
+sudo .venv/bin/python ./run.py --host 127.0.0.1 --port 8080 # custom bind address
+sudo .venv/bin/python ./run.py --reload                     # dev mode with auto-reload
+sudo .venv/bin/python ./run.py --create-users               # bootstrap the test users and exit
+sudo .venv/bin/python ./run.py --remove-users               # delete the test users and exit
 ```
 
 ### Configuration
@@ -85,7 +81,7 @@ The project root defaults to `./projects` (created at startup) for easy local
 testing. For a real Samba deployment, point it at the share path:
 
 ```bash
-sudo PROJECTS_BASE=/projects ./run.py
+sudo PROJECTS_BASE=/projects .venv/bin/python ./run.py
 ```
 
 ---
