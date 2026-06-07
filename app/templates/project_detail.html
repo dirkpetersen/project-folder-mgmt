@@ -13,13 +13,13 @@
         {% if project.public %}
         <span class="badge badge-public">public</span>
         {% endif %}
-        {% if project.adm_group %}
+        {% if project.restricted %}
         <span class="badge badge-sensitive">sensitive</span>
         {% endif %}
       </div>
       <p class="page-sub">
         Path: <code>{{ project.path }}</code>
-        {% if project.adm_group %} · Admin group: <code>{{ project.adm_group }}</code>{% endif %}
+        {% if project.restricted %} · Admin group: <code>{{ project.adm_group }}</code>{% endif %}
       </p>
     </div>
     {% if can_manage %}
@@ -159,7 +159,7 @@
     <div class="card-header">
       <h2 class="card-title">Data Stewards</h2>
       <span class="card-sub">
-        {% if project.adm_group %}Group <code>{{ project.adm_group }}</code>{% else %}Not set{% endif %}
+        {% if project.restricted %}Group <code>{{ project.adm_group }}</code>{% else %}Not set{% endif %}
       </span>
     </div>
     {% if can_edit %}

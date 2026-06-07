@@ -83,11 +83,19 @@ class Project:
         return str(PROJECTS_BASE / self.name)
 
     @property
+    def restricted(self) -> bool:
+        """True when management is restricted to data stewards.
+
+        Requires a *non-empty* adm group. An adm group with no members must NOT
+        restrict management — otherwise nobody could manage the project (and the
+        UI would wrongly claim "all members manage").
+        """
+        return bool(self.adm_group and self.adm_members)
+
+    @property
     def managers(self) -> list[str]:
         """Users allowed to manage this project."""
-        if self.adm_group:
-            return self.adm_members
-        return self.members
+        return self.adm_members if self.restricted else self.members
 
     def is_manager(self, username: str) -> bool:
         return username in self.managers

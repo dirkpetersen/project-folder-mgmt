@@ -183,8 +183,12 @@ def set_stewards(project_name: str, stewards: list[str]) -> None:
     the adm group is removed and management reverts to all project members.
     """
     adm_group = f"{GROUP_PREFIX}{project_name}-adm"
-    if stewards:
-        sync_group_members(adm_group, stewards)  # creates the group if needed
+    # Only real accounts can be stewards. If none of the entered names exist,
+    # don't leave an empty adm group behind (that would lock everyone out of
+    # management); delete it so management reverts to all members.
+    valid = [u for u in stewards if user_exists(u)]
+    if valid:
+        sync_group_members(adm_group, valid)
     else:
         delete_group(adm_group)
 

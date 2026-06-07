@@ -38,7 +38,7 @@
             <td>
               <a href="/projects/{{ p.name }}" class="project-link">{{ p.name }}</a>
               {% if p.public %}<span class="badge badge-public">public</span>{% endif %}
-              {% if p.adm_group %}<span class="badge badge-sensitive">sensitive</span>{% endif %}
+              {% if p.restricted %}<span class="badge badge-sensitive">sensitive</span>{% endif %}
               {% if p.cost_id %}<div class="cell-sub">{{ p.cost_id }}</div>{% endif %}
             </td>
             <td>{{ p.pi_lead or "—" }}</td>
