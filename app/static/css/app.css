@@ -1,22 +1,22 @@
 /* ─── Reset & base ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Oregon State University theme — Beaver Orange (#DC4405) on black */
+/* Theme — dirty (burnt) orange on black, with white & grey */
 :root {
   --bg:          #0a0a0a;
-  --bg-2:        #141414;
-  --bg-3:        #1f1f1f;
-  --border:      #2a2a2a;
-  --border-2:    #383838;
-  --accent:      #dc4405;   /* Beaver Orange */
-  --accent-dark: #b8360a;
-  --accent-glow: rgba(220,68,5,0.30);
-  --danger:      #ef4444;
-  --danger-dark: #dc2626;
-  --success:     #22c55e;
-  --text:        #f1f1f1;
-  --text-2:      #a3a3a3;
-  --text-3:      #6b6b6b;
+  --bg-2:        #161616;
+  --bg-3:        #202020;
+  --border:      #2c2c2c;
+  --border-2:    #3a3a3a;
+  --accent:      #c2682e;   /* dirty / burnt orange */
+  --accent-dark: #9c5121;
+  --accent-light:#d98c5a;   /* muted orange for text/hover */
+  --accent-glow: rgba(194,104,46,0.28);
+  --danger:      #c0473a;   /* muted brick red (destructive actions) */
+  --danger-dark: #9e3a2f;
+  --text:        #f0f0f0;   /* near-white */
+  --text-2:      #b0b0b0;   /* light grey */
+  --text-3:      #777777;   /* mid grey */
   --radius:      10px;
   --radius-sm:   6px;
   --shadow:      0 4px 24px rgba(0,0,0,0.6);
@@ -34,7 +34,7 @@ html, body {
 }
 
 a { color: var(--accent); text-decoration: none; }
-a:hover { color: #ff7a45; }
+a:hover { color: #d98c5a; }
 
 code {
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -43,7 +43,7 @@ code {
   border: 1px solid var(--border);
   padding: 1px 5px;
   border-radius: 4px;
-  color: #ffb38a;
+  color: #e0a878;
 }
 
 /* ─── Topbar ────────────────────────────────────────────────────────── */
@@ -245,7 +245,7 @@ code {
   vertical-align: top;
 }
 .matrix-table tr:last-child td { border-bottom: none; }
-.matrix-table tr.row-mine { background: rgba(220,68,5,0.04); }
+.matrix-table tr.row-mine { background: rgba(194,104,46,0.04); }
 .matrix-table tr:hover { background: var(--bg-3); }
 
 .project-link {
@@ -273,24 +273,28 @@ code {
   color: var(--text-2);
 }
 .chip-self {
-  background: rgba(220,68,5,0.15);
-  border-color: rgba(220,68,5,0.4);
-  color: #ffb38a;
+  /* the logged-in user — white emphasis, regardless of role */
+  background: rgba(255,255,255,0.10);
+  border-color: #9a9a9a;
+  color: #ffffff;
 }
 .chip-manager {
-  background: rgba(34,197,94,0.1);
-  border-color: rgba(34,197,94,0.3);
-  color: #86efac;
+  /* managers / stewards — dirty orange */
+  background: rgba(194,104,46,0.16);
+  border-color: rgba(194,104,46,0.45);
+  color: #d98c5a;
 }
 .chip-self.chip-manager {
-  background: rgba(220,68,5,0.2);
-  border-color: var(--accent);
-  color: #ffd0b3;
+  /* you, and a manager */
+  background: rgba(194,104,46,0.22);
+  border-color: #ffffff;
+  color: #ffffff;
 }
 .chip-folder {
-  background: rgba(245,158,11,0.1);
-  border-color: rgba(245,158,11,0.3);
-  color: #fcd34d;
+  /* subfolders — muted tan */
+  background: rgba(194,104,46,0.07);
+  border-color: rgba(194,104,46,0.25);
+  color: #c99a72;
 }
 
 /* ─── Badges ─────────────────────────────────────────────────────────  */
@@ -304,14 +308,15 @@ code {
   letter-spacing: 0.06em;
 }
 .badge-sensitive {
-  background: rgba(239,68,68,0.12);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #fca5a5;
+  background: rgba(192,71,58,0.14);
+  border: 1px solid rgba(192,71,58,0.4);
+  color: #d98a7e;
 }
 .badge-public {
-  background: rgba(34,197,94,0.12);
-  border: 1px solid rgba(34,197,94,0.3);
-  color: #86efac;
+  /* informational — neutral grey/white */
+  background: rgba(255,255,255,0.07);
+  border: 1px solid #555555;
+  color: #cccccc;
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────── */
@@ -469,7 +474,7 @@ code {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220,68,5,0.18), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(194,104,46,0.18), transparent),
     var(--bg);
 }
 .auth-card {
@@ -522,9 +527,9 @@ code {
   transition: all 0.15s ease;
 }
 .chip-user:hover {
-  background: rgba(220,68,5,0.15);
+  background: rgba(194,104,46,0.15);
   border-color: var(--accent);
-  color: #ffd0b3;
+  color: #f0cba8;
 }
 
 /* ─── Empty state ───────────────────────────────────────────────────── */
