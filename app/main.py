@@ -299,4 +299,17 @@ async def do_delete_subfolder(
 # ---------------------------------------------------------------------------
 
 def _parse_usernames(raw: str) -> list[str]:
-    return [u.strip().lower() for u in re.split(r"[,\s]+", raw) if u.strip()]
+    """Parse a user list. Space-separated is the norm, but comma- and
+    semicolon-separated lists are also accepted. Delimiter precedence is
+    semicolon > comma > whitespace: the highest-priority delimiter present in
+    the input is the one used to split it. Surrounding whitespace is stripped,
+    blank entries dropped, and names lowercased.
+    """
+    raw = raw.strip()
+    if ";" in raw:
+        parts = raw.split(";")
+    elif "," in raw:
+        parts = raw.split(",")
+    else:
+        parts = raw.split()  # any run of whitespace
+    return [p.strip().lower() for p in parts if p.strip()]
