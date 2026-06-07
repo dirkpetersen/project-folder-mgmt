@@ -6,8 +6,12 @@ folders, manage members, and add restricted subfolders through a web UI, without
 ever needing root themselves. The app runs as root and performs the privileged
 `mkdir` / `chown` / `chmod` / group operations on their behalf.
 
-Folder access is gated purely by **standard UNIX groups + SetGID bits** (no ACLs),
-so it stays fast and works cleanly with Samba's Access-Based Enumeration (ABE).
+Folder **access** is gated purely by **standard UNIX groups + SetGID bits**, so it
+stays fast and works cleanly with Samba's Access-Based Enumeration (ABE). A single,
+narrow use of POSIX ACLs — an inheritable **default ACL** on collaborative folders —
+guarantees new files are group read/write regardless of each user's `umask` (which
+SetGID alone can't control). The `chmod` modes remain the human-readable spec shown
+by `ls -l`; the default ACL enforces it.
 
 ---
 
@@ -15,6 +19,10 @@ so it stays fast and works cleanly with Samba's Access-Based Enumeration (ABE).
 
 The app must run as **root** (it creates users, groups, and folders). Run these
 from the project directory:
+
+> **Prerequisite:** the `setfacl`/`getfacl` tools (the `acl` package, e.g.
+> `apt install acl`) and a filesystem mounted with ACL support — used to enforce
+> group read/write on collaborative folders.
 
 ```bash
 # 1. Create and activate a virtual environment

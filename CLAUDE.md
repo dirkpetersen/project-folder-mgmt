@@ -40,7 +40,7 @@ A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-
 
 ## The permission model (the core domain logic)
 
-This is the part that requires care — it is the whole point of the app. Folders are gated purely by **standard UNIX groups + SetGID bits**, deliberately *no ACLs*, so Samba Access-Based Enumeration (ABE) can hide folders a user can't read. Get these modes exactly right:
+This is the part that requires care — it is the whole point of the app. **Access** is gated purely by **standard UNIX groups + SetGID bits** (no access ACLs), so Samba Access-Based Enumeration (ABE) can still hide folders a user can't read. Get these modes exactly right:
 
 The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./projects` resolved relative to the launch directory, overridable via the `PROJECTS_BASE` env var. Paths below are written as `/projects/...` for the canonical Samba deployment, but the app uses the resolved base.
 
@@ -51,6 +51,12 @@ The project root is `PROJECTS_BASE` (`app/system.py`), which defaults to `./proj
 - **Never modify the root or `/shr` when adding siblings.** Siblings are deployed side-by-side, leaving existing folders untouched.
 
 Group naming convention: primary group `grp-<project>`; restricted sub-groups `grp-<project>-<area>`.
+
+### Default ACLs enforce group read/write (the one ACL use)
+
+SetGID only makes new files inherit the *group*; their permission *bits* still come from the creator's `umask`, so a restrictive umask creates files the group can't read/write. To enforce collaboration we set a **default (inheritable) POSIX ACL** on every group-writable folder (`shr/` and restricted siblings) via `_set_inherit_acl()` in `app/system.py`: `setfacl -d -m u::rwx,g::rwx,o::-`. New files/dirs then get owner+group rwx regardless of umask. The `chmod 2770` stays as the human-readable advertisement `ls -l` shows; the default ACL does the enforcing. `g::` targets each folder's *own* owning group, so nothing leaks across folders.
+
+Deliberately **no ACL on the gatekeeper root** (`2750`): it has no user-created content, and a default ACL there would be inherited by restricted siblings and leak primary-group access. Folders with a default ACL show a `+` in `ls -l` (and the middle triad reflects the ACL mask); `getfacl` is the source of truth. Requires `setfacl`/`getfacl` (the `acl` package) and a filesystem mounted with ACL support.
 
 ## Project metadata
 

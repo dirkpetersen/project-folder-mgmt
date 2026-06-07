@@ -91,11 +91,34 @@ def sync_group_members(group_name: str, desired: list[str]) -> None:
 # project folder operations
 # ---------------------------------------------------------------------------
 
+def _set_inherit_acl(path: Path) -> None:
+    """Enforce group read/write on a collaborative folder via a default ACL.
+
+    setgid makes new files inherit the folder's *group*, but their permission
+    *bits* still come from each user's umask — so a restrictive umask silently
+    creates files the group can't read or write. A default (inheritable) ACL
+    fixes this: new files and subdirectories get owner+group rwx regardless of
+    umask. The chmod 2770 above stays as the human-readable advertisement that
+    `ls -l` shows; this default ACL does the actual enforcing.
+
+    `g::` targets the folder's owning group, so each folder enforces its own
+    group (grp-<project> for shr/, grp-<project>-<area> for restricted siblings)
+    without leaking access across folders.
+    """
+    _run(["setfacl", "-d", "-m", "u::rwx,g::rwx,o::-", str(path)])
+
+
 def _provision_dir(path: Path, group_name: str, mode: int) -> None:
     path.mkdir(parents=True, exist_ok=True)
     gid = grp.getgrnam(group_name).gr_gid
     os.chown(path, 0, gid)
     os.chmod(path, mode)
+    # Collaborative (group-writable) folders get a default ACL so new files
+    # inherit group rwx despite the creator's umask. The gatekeeper root (2750,
+    # group r-x, no user-created content) is left as pure mode bits — and must
+    # be, so restricted subfolders don't inherit primary-group access.
+    if mode & 0o020:  # group-writable bit set
+        _set_inherit_acl(path)
 
 
 def read_metadata(project_name: str) -> dict:
