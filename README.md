@@ -106,8 +106,11 @@ sudo PROJECTS_BASE=/projects .venv/bin/python ./run.py
 - **Data stewards** — a comma-separated field of project admins. If anyone is
   listed here, **only those users can manage the project** and regular members
   lose management rights. Clear the field to let all members manage it again.
-- **Restricted subfolders** — add siblings (e.g. `mkt`, `samples`), each
-  with its own member list. Users not in a subfolder's group can't even see it.
+- **Subfolders** — the shared `all/` folder is read/write for the whole project.
+  Add siblings (e.g. `mkt`, `samples`); leave members empty to share with the
+  whole project, or list members to restrict who can open it. Every subfolder
+  stays visible to all project members — restricted ones just can't be read by
+  outsiders.
 - **Archive a project** — "deleting" a project is non-destructive: its files are
   moved to `projects/.deleted/<name>` (readable by root only) and it disappears
   from listings, so an administrator can restore it.
@@ -124,7 +127,7 @@ membership alone; there is no separate data store.
 | Path                         | Owner / group              | Mode   | Effect                                                       |
 | ---------------------------- | -------------------------- | ------ | ------------------------------------------------------------ |
 | `/projects/<name>`           | `root:grp-<name>`          | `2750` | Group can traverse and read; no write at the root.           |
-| `/projects/<name>/shr`       | `root:grp-<name>`          | `2770` | Full collaborative read/write. Created on day one.           |
+| `/projects/<name>/all`       | `root:grp-<name>`          | `2770` | Full collaborative read/write. Created on day one.           |
 | `/projects/<name>/<sibling>` | `root:grp-<name>-<sibling>`| `2770` | Restricted; **still visible** to all project members, but only its group can read/write the contents. |
 
 Visibility policy: **whole projects are hidden from non-members** (the `2750`
@@ -135,7 +138,7 @@ folder shows up and can be entered, while its contents stay readable only by its
 dedicated group.
 
 The `2` prefix (SetGID) is mandatory on every folder so new files inherit the
-group. Adding a sibling **never** touches the root or `shr` — siblings are
+group. Adding a sibling **never** touches the root or `all` — siblings are
 deployed side-by-side.
 
 ### Project layout
@@ -187,24 +190,24 @@ Apply with `sudo systemctl reload smbd`.
 Create one master group and add all members to it (e.g. `grp-banana`), then:
 
 ```bash
-mkdir -p /projects/banana/shr
+mkdir -p /projects/banana/all
 
 # Project root: group can enter/read, others locked out
 chown root:grp-banana /projects/banana
 chmod 2750 /projects/banana
 
 # Shared folder: group gets full rwx + SetGID inheritance
-chown root:grp-banana /projects/banana/shr
-chmod 2770 /projects/banana/shr
+chown root:grp-banana /projects/banana/all
+chmod 2770 /projects/banana/all
 ```
 
 Result: everyone in `grp-banana` sees `/projects/banana` and can collaborate in
-`/shr`.
+`/all`.
 
 ### Phase 3: Growing complex (restricted siblings)
 
 Later, a team needs a restricted `adm` folder and a `mkt` folder. **Do not touch
-the root or `/shr`.** Create dedicated sub-groups and deploy siblings alongside:
+the root or `/all`.** Create dedicated sub-groups and deploy siblings alongside:
 
 ```bash
 mkdir -p /projects/banana/adm /projects/banana/mkt
@@ -223,8 +226,8 @@ setfacl -m g:grp-banana:--x /projects/banana/mkt
 
 The result:
 
-- Every project member (in `grp-banana`) **sees** `/shr`, `/adm`, and `/mkt`.
-- They have full read/write in `/shr`. They can see `/adm` and `/mkt` exist and
+- Every project member (in `grp-banana`) **sees** `/all`, `/adm`, and `/mkt`.
+- They have full read/write in `/all`. They can see `/adm` and `/mkt` exist and
   enter them, but cannot list or read their contents unless they're in
   `grp-banana-adm` / `grp-banana-mkt`.
 - Non-members don't see the `banana` project at all (the `2750` root denies them,
@@ -235,5 +238,5 @@ The result:
 1. **Zero config bloat** — `smb.conf` stays tiny forever.
 2. **Instant performance** — Linux group evaluation happens in the kernel, so
    browsing is fast even with tens of thousands of users.
-3. **Short paths** — three-letter folders (`/shr`, `/adm`, `/mkt`) keep paths
+3. **Short paths** — three-letter folders (`/all`, `/adm`, `/mkt`) keep paths
    compact for Windows and Mac clients.

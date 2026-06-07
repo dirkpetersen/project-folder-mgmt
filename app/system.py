@@ -195,7 +195,7 @@ def _set_inherit_acl(path: Path) -> None:
     `ls -l` shows; this default ACL does the actual enforcing.
 
     `g::` targets the folder's owning group, so each folder enforces its own
-    group (grp-<project> for shr/, grp-<project>-<area> for restricted siblings)
+    group (grp-<project> for all/, grp-<project>-<area> for restricted siblings)
     without leaking access across folders.
     """
     _run(["setfacl", "-d", "-m", "u::rwx,g::rwx,o::-", str(path)])
@@ -249,8 +249,11 @@ def write_metadata(project_name: str, metadata: dict) -> None:
 
 
 def create_project(display_name: str, members: list[str], metadata: dict | None = None) -> str:
-    """Create a project: allocate an id, make <name>_<id>/ + /shr, and the
-    grp-<id> primary group. Returns the on-disk folder name (<name>_<id>)."""
+    """Create a project: allocate an id, make <name>_<id>/ + /all, and the
+    grp-<id> primary group. Returns the on-disk folder name (<name>_<id>).
+
+    'all' is the shared folder open to every project member (named so it's
+    obvious all members have access)."""
     pid = generate_project_id()
     folder_name = f"{display_name}_{pid}"
     primary_group = f"{GROUP_PREFIX}{pid}"
@@ -258,7 +261,7 @@ def create_project(display_name: str, members: list[str], metadata: dict | None 
 
     root_path = PROJECTS_BASE / folder_name
     _provision_dir(root_path, primary_group, 0o2750)
-    _provision_dir(root_path / "shr", primary_group, 0o2770)
+    _provision_dir(root_path / "all", primary_group, 0o2770)
     write_metadata(folder_name, metadata or {})
     return folder_name
 

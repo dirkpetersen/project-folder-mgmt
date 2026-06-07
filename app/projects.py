@@ -52,8 +52,8 @@ def validate_subfolder_name(raw: str, project_name: str = "") -> str:
     name = _normalize(raw)
     if not name:
         raise ValueError("Subfolder name cannot be empty.")
-    if name == "shr":
-        raise ValueError("'shr' is reserved.")
+    if name in ("all", "shr"):
+        raise ValueError(f"'{name}' is reserved for the shared folder.")
     return name
 
 
@@ -146,15 +146,16 @@ def _locate(project_name: str) -> tuple:
 def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
     """Discover restricted sibling folders inside a project directory.
 
-    Each is a directory other than 'shr', backed by a grp-<name>-<folder>
-    group. 'adm' is excluded — it is the management group, surfaced separately.
+    Each is a directory other than the shared folder ('all', or legacy 'shr'),
+    backed by a grp-<name>-<folder> group. 'adm' is excluded — it is the
+    management group, surfaced separately.
     """
     if not project_dir or not project_dir.is_dir():
         return []
     subs = []
     for entry in sorted(project_dir.iterdir()):
-        if not entry.is_dir() or entry.name.startswith(".") or entry.name in ("shr", "adm"):
-            continue  # skip shr, adm, and the .deleted/.locked holding dirs
+        if not entry.is_dir() or entry.name.startswith(".") or entry.name in ("all", "shr", "adm"):
+            continue  # skip the shared folder, adm, and the .deleted/.inactive holding dirs
         subs.append(_subfolder_from_dir(project_name, entry))
     return subs
 
