@@ -69,7 +69,8 @@ sudo .venv/bin/python ./run.py --host 127.0.0.1 --port 8080 # custom bind addres
 sudo .venv/bin/python ./run.py --reload                     # dev mode with auto-reload
 sudo .venv/bin/python ./run.py --create-users               # bootstrap the test users and exit
 sudo .venv/bin/python ./run.py --remove-users               # delete the test users and exit
-sudo .venv/bin/python ./run.py --purge-expired              # purge projects deleted >90d ago, and exit
+sudo .venv/bin/python ./run.py --purge                      # purge projects deleted >90d ago (default), and exit
+sudo .venv/bin/python ./run.py --purge 30                   # ...or use a custom retention in days
 sudo .venv/bin/python ./run.py --deactivate 90              # deactivate projects idle >90d, and exit
 ```
 
@@ -79,9 +80,9 @@ Two housekeeping tasks are meant to run unattended; each does its work and exits
 (no server started), so they're safe to schedule. Run them as **root** and set
 `PROJECTS_BASE` to your real share path.
 
-- **`--purge-expired`** — permanently removes projects/subfolders that have been
-  in `.deleted` longer than the 90-day retention, and drops their UNIX groups.
-  (This also runs automatically on every server start.)
+- **`--purge [DAYS]`** — permanently removes projects/subfolders that have been
+  in `.deleted` longer than `DAYS` (default 90), and drops their UNIX groups.
+  (The 90-day purge also runs automatically on every server start.)
 - **`--deactivate N`** — moves active projects with **no file activity in the
   last N days** into `.deactivated` to declutter the listing. Activity is the
   most recent access/modification time across a project's content. *Note:* on
@@ -93,14 +94,14 @@ sweep Sundays at 03:00):
 
 ```cron
 # m h dom mon dow  user  command
-0 2 * * *  root  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --purge-expired
+0 2 * * *  root  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --purge
 0 3 * * 0  root  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --deactivate 90
 ```
 
 Or via root's crontab (`sudo crontab -e`):
 
 ```cron
-0 2 * * *  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --purge-expired
+0 2 * * *  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --purge
 0 3 * * 0  cd /opt/project-folder-mgmt && PROJECTS_BASE=/projects .venv/bin/python ./run.py --deactivate 90
 ```
 

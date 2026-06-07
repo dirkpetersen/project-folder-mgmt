@@ -19,8 +19,8 @@ def main():
                         help="Bootstrap test users and exit")
     parser.add_argument("--remove-users", action="store_true",
                         help="Remove test users and exit")
-    parser.add_argument("--purge-expired", action="store_true",
-                        help="Purge deleted projects past the 90-day retention and exit")
+    parser.add_argument("--purge", type=int, nargs="?", const=90, default=None, metavar="DAYS",
+                        help="Purge projects deleted more than DAYS ago (default 90) and exit")
     parser.add_argument("--deactivate", type=int, metavar="DAYS",
                         help="Deactivate active projects with no file activity in DAYS "
                              "(move to .deactivated) and exit, e.g. --deactivate 90")
@@ -46,10 +46,11 @@ def main():
         print(f"Removed {len(removed)} test user(s): {', '.join(removed) or 'none found'}")
         sys.exit(0)
 
-    if args.purge_expired:
+    if args.purge is not None:
         from app.system import purge_expired
-        purged = purge_expired()
-        print(f"Purged {len(purged)} expired deleted project(s): {', '.join(purged) or 'none'}")
+        purged = purge_expired(args.purge)
+        print(f"Purged {len(purged)} project(s) deleted >{args.purge}d ago: "
+              f"{', '.join(purged) or 'none'}")
         sys.exit(0)
 
     if args.deactivate is not None:
