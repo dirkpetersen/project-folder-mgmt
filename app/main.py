@@ -288,14 +288,18 @@ async def do_reactivate_project(request: Request, project_name: str):
 
 @app.post("/projects/{project_name}/lock")
 async def do_lock_project(request: Request, project_name: str):
-    require_manager(request, project_name)
+    _, project = require_manager(request, project_name)
+    if project.state != "active":  # can't lock a deactivated/deleted project in place
+        return _redirect_project(project_name, "Reactivate the project before locking it.")
     lock_project(project_name)  # read-only in place
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
 @app.post("/projects/{project_name}/unlock")
 async def do_unlock_project(request: Request, project_name: str):
-    require_manager(request, project_name)
+    _, project = require_manager(request, project_name)
+    if project.state != "active":
+        return _redirect_project(project_name, "Reactivate the project before unlocking it.")
     unlock_project(project_name)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
@@ -354,14 +358,18 @@ async def do_undelete_subfolder(request: Request, project_name: str, folder_name
 
 @app.post("/projects/{project_name}/subfolders/{folder_name}/lock")
 async def do_lock_subfolder(request: Request, project_name: str, folder_name: str):
-    require_manager(request, project_name)
+    _, project = require_manager(request, project_name)
+    if project.state != "active":  # parent deactivated/deleted -> reactivate first
+        return _redirect_project(project_name, "Reactivate the project before locking subfolders.")
     lock_subfolder(project_name, folder_name)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 
 @app.post("/projects/{project_name}/subfolders/{folder_name}/unlock")
 async def do_unlock_subfolder(request: Request, project_name: str, folder_name: str):
-    require_manager(request, project_name)
+    _, project = require_manager(request, project_name)
+    if project.state != "active":
+        return _redirect_project(project_name, "Reactivate the project before unlocking subfolders.")
     unlock_subfolder(project_name, folder_name)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
