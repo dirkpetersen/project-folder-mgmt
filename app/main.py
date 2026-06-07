@@ -24,11 +24,14 @@ from app.system import (
     delete_project,
     delete_subfolder,
     lock_project,
+    lock_subfolder,
     set_stewards,
     subgroup,
     sync_group_members,
     undelete_project,
+    undelete_subfolder,
     unlock_project,
+    unlock_subfolder,
     user_exists,
     write_metadata,
 )
@@ -321,13 +324,30 @@ async def update_subfolder_members(
 
 
 @app.post("/projects/{project_name}/subfolders/{folder_name}/delete")
-async def do_delete_subfolder(
-    request: Request,
-    project_name: str,
-    folder_name: str,
-):
+async def do_delete_subfolder(request: Request, project_name: str, folder_name: str):
     require_manager(request, project_name)
     delete_subfolder(project_name, folder_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
+@app.post("/projects/{project_name}/subfolders/{folder_name}/undelete")
+async def do_undelete_subfolder(request: Request, project_name: str, folder_name: str):
+    require_manager(request, project_name)
+    undelete_subfolder(project_name, folder_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
+@app.post("/projects/{project_name}/subfolders/{folder_name}/lock")
+async def do_lock_subfolder(request: Request, project_name: str, folder_name: str):
+    require_manager(request, project_name)
+    lock_subfolder(project_name, folder_name)
+    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+
+
+@app.post("/projects/{project_name}/subfolders/{folder_name}/unlock")
+async def do_unlock_subfolder(request: Request, project_name: str, folder_name: str):
+    require_manager(request, project_name)
+    unlock_subfolder(project_name, folder_name)
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 
 

@@ -279,99 +279,134 @@ def set_stewards(project_name: str, stewards: list[str]) -> None:
 # delete / lock (reversible holding areas) + purge
 # ---------------------------------------------------------------------------
 
-def _holding(subdir: str) -> Path:
-    """Return (creating if needed) a root-only 0700 holding directory."""
-    d = PROJECTS_BASE / subdir
-    d.mkdir(parents=True, exist_ok=True)
-    os.chmod(d, 0o700)
-    return d
+# Generic holding-area moves, used for both whole projects (parent=PROJECTS_BASE)
+# and restricted subfolders (parent=PROJECTS_BASE/<project>). Each parent grows
+# its own root-only .deleted/ and .locked/ dirs.
 
-
-def _move_to_holding(project_name: str, subdir: str) -> Path | None:
-    """Move an active project into a holding area; return its new path."""
-    src = PROJECTS_BASE / project_name
+def _hold(parent: Path, item: str, subdir: str, stamp: bool = False) -> Path | None:
+    """Move parent/item into parent/<subdir>/item; return its new path."""
+    src = parent / item
     if not src.exists():
         return None
-    target = _holding(subdir) / project_name
+    holding = parent / subdir
+    holding.mkdir(parents=True, exist_ok=True)
+    os.chmod(holding, 0o700)  # root-only
+    target = holding / item
     suffix = 1
     while target.exists():  # don't clobber a prior entry of the same name
-        target = _holding(subdir) / f"{project_name}.{suffix}"
+        target = holding / f"{item}.{suffix}"
         suffix += 1
     shutil.move(str(src), str(target))
+    if stamp:
+        (target / DELETED_AT_MARKER).write_text(datetime.now(timezone.utc).isoformat())
     return target
 
 
-def _move_from_holding(project_name: str, subdir: str) -> bool:
-    """Move a held project back to the active area. Raises if a name clash exists."""
-    src = PROJECTS_BASE / subdir / project_name
+def _unhold(parent: Path, item: str, subdir: str) -> bool:
+    """Move parent/<subdir>/item back to parent/item. Raises on a name clash."""
+    src = parent / subdir / item
     if not src.is_dir():
         return False
-    dest = PROJECTS_BASE / project_name
+    dest = parent / item
     if dest.exists():
-        raise RuntimeError(
-            f"Cannot restore '{project_name}': an active project with that name already exists."
-        )
+        raise RuntimeError(f"Cannot restore '{item}': a '{item}' already exists.")
+    marker = src / DELETED_AT_MARKER
+    if marker.exists():
+        marker.unlink()
     shutil.move(str(src), str(dest))
     return True
 
 
-def delete_project(project_name: str) -> None:
-    """Soft-delete: move the project into projects/.deleted/<name> and stamp the
-    deletion time. Files and groups are preserved; it can be undeleted until it
-    is purged from disk after RETENTION_DAYS (see purge_expired)."""
-    target = _move_to_holding(project_name, DELETED_DIR)
-    if target is not None:
-        (target / DELETED_AT_MARKER).write_text(datetime.now(timezone.utc).isoformat())
-
-
-def undelete_project(project_name: str) -> None:
-    """Restore a deleted project to the active area."""
-    src = PROJECTS_BASE / DELETED_DIR / project_name
-    marker = src / DELETED_AT_MARKER
-    if marker.exists():
-        marker.unlink()
-    _move_from_holding(project_name, DELETED_DIR)
-
-
-def lock_project(project_name: str) -> None:
-    """Lock: move the project into projects/.locked/<name>. It disappears from
-    listings and members can't reach its files (the holding dir is root-only),
-    but it is kept indefinitely and can be unlocked."""
-    _move_to_holding(project_name, LOCKED_DIR)
-
-
-def unlock_project(project_name: str) -> None:
-    """Restore a locked project to the active area."""
-    _move_from_holding(project_name, LOCKED_DIR)
-
-
-def deleted_at(project_name: str) -> datetime | None:
-    """Return when a deleted project was deleted, or None if unknown."""
-    marker = PROJECTS_BASE / DELETED_DIR / project_name / DELETED_AT_MARKER
+def read_deleted_marker(path: Path) -> datetime | None:
+    """Read the .deleted_at timestamp inside a held directory, or None."""
     try:
-        return datetime.fromisoformat(marker.read_text().strip())
+        return datetime.fromisoformat((Path(path) / DELETED_AT_MARKER).read_text().strip())
     except (FileNotFoundError, ValueError):
         return None
 
 
+# --- whole projects -------------------------------------------------------
+
+def delete_project(project_name: str) -> None:
+    """Soft-delete: move the project into projects/.deleted/<name>, stamped with
+    the deletion time. Files and groups are kept; undeletable until purged after
+    RETENTION_DAYS."""
+    _hold(PROJECTS_BASE, project_name, DELETED_DIR, stamp=True)
+
+
+def undelete_project(project_name: str) -> None:
+    _unhold(PROJECTS_BASE, project_name, DELETED_DIR)
+
+
+def lock_project(project_name: str) -> None:
+    """Lock: move the project into projects/.locked/<name> — hidden and
+    inaccessible (root-only holding dir), kept until unlocked."""
+    _hold(PROJECTS_BASE, project_name, LOCKED_DIR)
+
+
+def unlock_project(project_name: str) -> None:
+    _unhold(PROJECTS_BASE, project_name, LOCKED_DIR)
+
+
+def deleted_at(project_name: str) -> datetime | None:
+    """When a deleted project was deleted, or None."""
+    return read_deleted_marker(PROJECTS_BASE / DELETED_DIR / project_name)
+
+
+# --- restricted subfolders (same logic, inside the project root) ----------
+
+def delete_subfolder(project_name: str, folder_name: str) -> None:
+    """Soft-delete a subfolder into <project>/.deleted/<folder>. Group kept."""
+    _hold(PROJECTS_BASE / project_name, folder_name, DELETED_DIR, stamp=True)
+
+
+def undelete_subfolder(project_name: str, folder_name: str) -> None:
+    _unhold(PROJECTS_BASE / project_name, folder_name, DELETED_DIR)
+
+
+def lock_subfolder(project_name: str, folder_name: str) -> None:
+    _hold(PROJECTS_BASE / project_name, folder_name, LOCKED_DIR)
+
+
+def unlock_subfolder(project_name: str, folder_name: str) -> None:
+    _unhold(PROJECTS_BASE / project_name, folder_name, LOCKED_DIR)
+
+
+# --- purge ----------------------------------------------------------------
+
 def purge_expired(retention_days: int = RETENTION_DAYS) -> list[str]:
-    """Permanently remove deleted projects older than retention_days, and drop
-    their groups. Returns the names purged. Entries without a valid timestamp
-    are left alone (fail-safe)."""
-    holding = PROJECTS_BASE / DELETED_DIR
-    if not holding.is_dir():
-        return []
+    """Permanently remove deleted projects AND deleted subfolders older than
+    retention_days, dropping their groups. Entries with no valid timestamp are
+    left alone (fail-safe). Returns the names/paths purged."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     purged = []
-    for entry in holding.iterdir():
-        if not entry.is_dir():
-            continue
-        ts = deleted_at(entry.name)
-        if ts is None or ts >= cutoff:
-            continue
-        shutil.rmtree(entry)
-        _delete_project_groups(entry.name)
-        purged.append(entry.name)
+
+    def _expired(path: Path) -> bool:
+        ts = read_deleted_marker(path)
+        return ts is not None and ts < cutoff
+
+    # 1. expired deleted projects
+    holding = PROJECTS_BASE / DELETED_DIR
+    if holding.is_dir():
+        for entry in holding.iterdir():
+            if entry.is_dir() and _expired(entry):
+                shutil.rmtree(entry)
+                _delete_project_groups(entry.name)
+                purged.append(entry.name)
+
+    # 2. expired deleted subfolders inside each active project
+    if PROJECTS_BASE.is_dir():
+        for proj in PROJECTS_BASE.iterdir():
+            if not proj.is_dir() or proj.name.startswith("."):
+                continue
+            sub_holding = proj / DELETED_DIR
+            if not sub_holding.is_dir():
+                continue
+            for entry in sub_holding.iterdir():
+                if entry.is_dir() and _expired(entry):
+                    shutil.rmtree(entry)
+                    delete_group(subgroup(proj.name, entry.name))
+                    purged.append(f"{proj.name}/{entry.name}")
     return purged
 
 
@@ -381,13 +416,6 @@ def _delete_project_groups(project_name: str) -> None:
     for g in grp.getgrall():
         if g.gr_name == base or g.gr_name.startswith(f"{base}-"):
             delete_group(g.gr_name)
-
-
-def delete_subfolder(project_name: str, folder_name: str) -> None:
-    folder_path = PROJECTS_BASE / project_name / folder_name
-    if folder_path.exists():
-        shutil.rmtree(folder_path)
-    delete_group(subgroup(project_name, folder_name))
 
 
 # ---------------------------------------------------------------------------

@@ -42,6 +42,8 @@ A project may be managed by **all members of `grp-<name>`** — *unless* a `grp-
 
 `get_project()` is location-aware: it finds a project in active/`.deleted`/`.locked` and sets `Project.state` (`active`|`deleted`|`locked`) plus `days_left` for deleted ones. The detail page shows Delete+Lock when active, Undelete when deleted, Unlock when locked; editing forms are gated on `state == 'active'`. The dashboard lists held projects the user belongs to (`held_projects_for()`) with restore buttons. Restore raises if an active project of the same name exists.
 
+**Subfolders get the same delete/lock treatment**, in holding dirs *inside the project root* (`<project>/.deleted/<area>`, `<project>/.locked/<area>`). The generic `_hold()`/`_unhold(parent, item, subdir)` helpers back both levels; `delete_subfolder`/`undelete_subfolder`/`lock_subfolder`/`unlock_subfolder` pass `parent = PROJECTS_BASE/<project>`. `Subfolder` carries `state`/`days_left`; `get_project` populates `subfolders` (active) and `held_subfolders` (deleted/locked) — the detail page shows Lock+Delete per active subfolder and a "Removed Subfolders" table with Undelete/Unlock. `purge_expired()` sweeps both top-level deleted projects and each active project's deleted subfolders. `_subfolders_for` skips dot-dirs so the holding areas never show as subfolders.
+
 ## The permission model (the core domain logic)
 
 This is the part that requires care — it is the whole point of the app. **Access** is gated purely by **standard UNIX groups + SetGID bits** (no access ACLs), so Samba Access-Based Enumeration (ABE) can still hide folders a user can't read. Get these modes exactly right:

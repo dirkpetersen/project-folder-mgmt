@@ -15,6 +15,7 @@ from app.system import (
     get_group_members,
     group_exists,
     project_group,
+    read_deleted_marker,
     read_metadata,
     split_project_name,
     subgroup,
@@ -63,6 +64,8 @@ class Subfolder:
     name: str
     group: str
     members: list[str]
+    state: str = "active"          # "active" | "deleted" | "locked"
+    days_left: int | None = None   # days until purge (deleted subfolders only)
 
 
 @dataclass
@@ -81,7 +84,8 @@ class Project:
     public: bool = False        # from .project.json; visible to everyone if true
     state: str = "active"       # "active" | "deleted" | "locked"
     days_left: int | None = None  # days until purge (deleted projects only)
-    subfolders: list[Subfolder] = field(default_factory=list)
+    subfolders: list[Subfolder] = field(default_factory=list)        # active
+    held_subfolders: list[Subfolder] = field(default_factory=list)   # deleted/locked
 
     @property
     def path(self) -> str:
@@ -144,8 +148,8 @@ def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
         return []
     subs = []
     for entry in sorted(project_dir.iterdir()):
-        if not entry.is_dir() or entry.name in ("shr", "adm"):
-            continue
+        if not entry.is_dir() or entry.name.startswith(".") or entry.name in ("shr", "adm"):
+            continue  # skip shr, adm, and the .deleted/.locked holding dirs
         sub_group = subgroup(project_name, entry.name)
         subs.append(Subfolder(
             name=entry.name,
@@ -153,6 +157,34 @@ def _subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
             members=get_group_members(sub_group),
         ))
     return subs
+
+
+def _held_subfolders_for(project_name: str, project_dir) -> list[Subfolder]:
+    """Discover deleted and locked subfolders held under the project root."""
+    if not project_dir or not project_dir.is_dir():
+        return []
+    held = []
+    for subdir, state in ((DELETED_DIR, "deleted"), (LOCKED_DIR, "locked")):
+        holding = project_dir / subdir
+        if not holding.is_dir():
+            continue
+        for entry in sorted(holding.iterdir()):
+            if not entry.is_dir():
+                continue
+            sub_group = subgroup(project_name, entry.name)
+            days_left = None
+            if state == "deleted":
+                ts = read_deleted_marker(entry)
+                if ts is not None:
+                    days_left = max(0, RETENTION_DAYS - (datetime.now(timezone.utc) - ts).days)
+            held.append(Subfolder(
+                name=entry.name,
+                group=sub_group,
+                members=get_group_members(sub_group),
+                state=state,
+                days_left=days_left,
+            ))
+    return held
 
 
 def get_project(project_name: str) -> Project | None:
@@ -192,6 +224,7 @@ def get_project(project_name: str) -> Project | None:
         state=state,
         days_left=days_left,
         subfolders=_subfolders_for(project_name, project_dir),
+        held_subfolders=_held_subfolders_for(project_name, project_dir),
     )
 
 
