@@ -292,7 +292,7 @@
           <button type="submit" class="btn btn-primary">Add</button>
         </div>
       </div>
-      <p class="field-hint">Creates <code>/projects/{{ project.name }}/&lt;name&gt;</code> with group <code>grp-{{ project.name }}-&lt;name&gt;</code> (chmod 2770).</p>
+      <p class="field-hint">Creates <code>{{ project.path }}/&lt;name&gt;</code> with group <code>grp-{{ project.name }}-&lt;name&gt;</code> (chmod 2770).</p>
     </form>
   </div>
   {% endif %}
