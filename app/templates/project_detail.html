@@ -49,6 +49,9 @@
   {% if error %}
   <div class="alert alert-error mt-4">{{ error }}</div>
   {% endif %}
+  {% if notice %}
+  <div class="alert alert-warn mt-4">{{ notice }}</div>
+  {% endif %}
 
   {% if project.state == 'deleted' %}
   <div class="alert alert-error mt-4">

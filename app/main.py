@@ -172,7 +172,7 @@ async def do_create_project(
 
     # Each project gets a unique internal id, so duplicate display names are
     # fine — the folder name (<name>_<id>) and groups (grp-<id>) stay distinct.
-    member_list = _parse_usernames(members)
+    member_list, unknown = _split_known_users(members)
     if username not in member_list:
         member_list.insert(0, username)
     folder_name = create_project(clean_name, member_list, {
@@ -180,7 +180,7 @@ async def do_create_project(
         "description": description, "cost_id": cost_id,
         "public": is_public,
     })
-    return RedirectResponse(url=f"/projects/{folder_name}", status_code=303)
+    return _redirect_project(folder_name, _skipped_notice(unknown))
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ async def do_create_project(
 # ---------------------------------------------------------------------------
 
 @app.get("/projects/{project_name}", response_class=HTMLResponse)
-async def project_detail(request: Request, project_name: str, error: str = ""):
+async def project_detail(request: Request, project_name: str, error: str = "", notice: str = ""):
     username = require_user(request)
     project = get_project(project_name)
     # Hide existence from users who can't see it: return 404 unless visible.
@@ -200,6 +200,7 @@ async def project_detail(request: Request, project_name: str, error: str = ""):
         "project": project,
         "can_manage": can_manage,
         "error": error,
+        "notice": notice,
     })
 
 
@@ -210,12 +211,12 @@ async def update_members(
     members: Annotated[str, Form()] = "",
 ):
     username, project = require_manager(request, project_name)
-    member_list = _parse_usernames(members)
+    member_list, unknown = _split_known_users(members)
     # Don't let me remove my own access: if I'm currently a member, keep me in.
     if username in project.members and username not in member_list:
         member_list.append(username)
     sync_group_members(project.primary_group, member_list)
-    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+    return _redirect_project(project_name, _skipped_notice(unknown))
 
 
 @app.post("/projects/{project_name}/stewards")
@@ -225,12 +226,12 @@ async def update_stewards(
     stewards: Annotated[str, Form()] = "",
 ):
     username, _ = require_manager(request, project_name)
-    steward_list = _parse_usernames(stewards)
+    steward_list, unknown = _split_known_users(stewards)
     # If I'm designating stewards, include myself so I keep management rights.
     if steward_list and username not in steward_list:
         steward_list.append(username)
     set_stewards(project_name, steward_list)
-    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+    return _redirect_project(project_name, _skipped_notice(unknown))
 
 
 @app.post("/projects/{project_name}/metadata")
@@ -300,8 +301,9 @@ async def do_create_subfolder(
     except ValueError as e:
         return RedirectResponse(
             url=f"/projects/{project_name}?error={quote(str(e))}", status_code=303)
-    create_subfolder(project_name, clean_folder, _parse_usernames(members))
-    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+    member_list, unknown = _split_known_users(members)
+    create_subfolder(project_name, clean_folder, member_list)
+    return _redirect_project(project_name, _skipped_notice(unknown))
 
 
 @app.post("/projects/{project_name}/subfolders/{folder_name}/members")
@@ -313,8 +315,9 @@ async def update_subfolder_members(
 ):
     require_manager(request, project_name)
     sub_group = subgroup(project_name, folder_name)
-    sync_group_members(sub_group, _parse_usernames(members))
-    return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+    member_list, unknown = _split_known_users(members)
+    sync_group_members(sub_group, member_list)
+    return _redirect_project(project_name, _skipped_notice(unknown))
 
 
 @app.post("/projects/{project_name}/subfolders/{folder_name}/delete")
@@ -347,3 +350,26 @@ def _parse_usernames(raw: str) -> list[str]:
     else:
         parts = raw.split()  # any run of whitespace
     return [p.strip().lower() for p in parts if p.strip()]
+
+
+def _split_known_users(raw: str) -> tuple:
+    """Parse a user list into (known, unknown) by checking each against the
+    system's account database. Used to warn about names that don't exist."""
+    names = _parse_usernames(raw)
+    known = [u for u in names if user_exists(u)]
+    unknown = [u for u in names if not user_exists(u)]
+    return known, unknown
+
+
+def _skipped_notice(unknown: list) -> str:
+    if not unknown:
+        return ""
+    plural = "s" if len(unknown) > 1 else ""
+    return f"Skipped unknown user{plural} (no such account): {', '.join(unknown)}"
+
+
+def _redirect_project(project_name: str, notice: str = "") -> RedirectResponse:
+    url = f"/projects/{project_name}"
+    if notice:
+        url += f"?notice={quote(notice)}"
+    return RedirectResponse(url=url, status_code=303)
