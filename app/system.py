@@ -16,6 +16,11 @@ from pathlib import Path
 PROJECTS_BASE = Path(os.environ.get("PROJECTS_BASE", "projects")).resolve()
 GROUP_PREFIX = "grp-"
 
+# Linux limits group (and user) names. shadow-utils rejects names longer than
+# this, so every group we create — grp-<project> and grp-<project>-<area> —
+# must fit. Overridable for systems configured with a different limit.
+MAX_GROUP_NAME = int(os.environ.get("MAX_GROUP_NAME", "32"))
+
 # Per-project metadata file, stored at the project root. Readable by root only.
 METADATA_FILE = ".project.json"
 METADATA_FIELDS = ("pi_lead", "department", "description", "cost_id")  # free-text fields

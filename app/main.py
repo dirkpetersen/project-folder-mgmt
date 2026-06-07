@@ -3,6 +3,7 @@ FastAPI entry point. Runs as root.
 """
 import re
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,10 +14,12 @@ from app.projects import (
     get_project,
     held_projects_for,
     projects_visible_to,
+    steward_group_fits,
     validate_project_name,
     validate_subfolder_name,
 )
 from app.system import (
+    MAX_GROUP_NAME,
     TEST_USERS,
     create_project,
     create_subfolder,
@@ -137,6 +140,7 @@ async def new_project_page(request: Request):
         "username": username,
         "error": None,
         "form": {},
+        "group_name_max": MAX_GROUP_NAME,
     })
 
 
@@ -166,6 +170,7 @@ async def do_create_project(
             "username": username,
             "error": str(e),
             "form": form,
+            "group_name_max": MAX_GROUP_NAME,
         }, status_code=400)
 
     if get_project(clean_name):
@@ -173,6 +178,7 @@ async def do_create_project(
             "username": username,
             "error": f"Project '{clean_name}' already exists.",
             "form": form,
+            "group_name_max": MAX_GROUP_NAME,
         }, status_code=400)
 
     member_list = _parse_usernames(members)
@@ -191,7 +197,7 @@ async def do_create_project(
 # ---------------------------------------------------------------------------
 
 @app.get("/projects/{project_name}", response_class=HTMLResponse)
-async def project_detail(request: Request, project_name: str):
+async def project_detail(request: Request, project_name: str, error: str = ""):
     username = require_user(request)
     project = get_project(project_name)
     # Hide existence from users who can't see it: return 404 unless visible.
@@ -202,6 +208,7 @@ async def project_detail(request: Request, project_name: str):
         "username": username,
         "project": project,
         "can_manage": can_manage,
+        "error": error,
     })
 
 
@@ -228,6 +235,12 @@ async def update_stewards(
 ):
     username, _ = require_manager(request, project_name)
     steward_list = _parse_usernames(stewards)
+    # Setting stewards needs the grp-<name>-adm group; reject early if it won't fit.
+    if steward_list and not steward_group_fits(project_name):
+        msg = (f"Cannot set data stewards: the group 'grp-{project_name}-adm' would "
+               f"exceed the {MAX_GROUP_NAME}-character system limit for group names.")
+        return RedirectResponse(
+            url=f"/projects/{project_name}?error={quote(msg)}", status_code=303)
     # If I'm designating stewards, include myself so I keep management rights.
     if steward_list and username not in steward_list:
         steward_list.append(username)
@@ -294,11 +307,14 @@ async def do_create_subfolder(
     members: Annotated[str, Form()] = "",
 ):
     require_manager(request, project_name)
-    try:
-        clean_folder = validate_subfolder_name(folder_name)
-    except ValueError:
-        # Empty or invalid name (e.g. saved with a blank field): just go back.
+    if not folder_name.strip():
+        # Blank field (e.g. clicked Add with nothing): just go back, no error.
         return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
+    try:
+        clean_folder = validate_subfolder_name(folder_name, project_name)
+    except ValueError as e:
+        return RedirectResponse(
+            url=f"/projects/{project_name}?error={quote(str(e))}", status_code=303)
     create_subfolder(project_name, clean_folder, _parse_usernames(members))
     return RedirectResponse(url=f"/projects/{project_name}", status_code=303)
 

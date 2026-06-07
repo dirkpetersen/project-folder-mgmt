@@ -10,6 +10,7 @@ from app.system import (
     DELETED_DIR,
     GROUP_PREFIX,
     LOCKED_DIR,
+    MAX_GROUP_NAME,
     PROJECTS_BASE,
     RETENTION_DAYS,
     deleted_at,
@@ -27,6 +28,17 @@ def _normalize(raw: str) -> str:
     return re.sub(r"[^a-z0-9-]", "", raw.strip().lower().replace(" ", "-"))
 
 
+# The primary group (grp-<name>) must fit the system group-name limit. Sub-groups
+# (grp-<name>-adm, grp-<name>-<area>) need extra room and are guarded separately
+# at steward/subfolder creation time — a long name simply can't have them.
+PROJECT_NAME_MAX = MAX_GROUP_NAME - len(GROUP_PREFIX)
+
+
+def steward_group_fits(project_name: str) -> bool:
+    """Whether grp-<name>-adm fits — i.e. the project can have data stewards."""
+    return len(f"{GROUP_PREFIX}{project_name}-adm") <= MAX_GROUP_NAME
+
+
 def validate_project_name(raw: str) -> str:
     """Normalise and validate. Returns the clean name or raises ValueError."""
     name = _normalize(raw)
@@ -34,15 +46,34 @@ def validate_project_name(raw: str) -> str:
         raise ValueError("Project name must be longer than 10 characters.")
     if len(name) >= 50:
         raise ValueError("Project name must be shorter than 50 characters.")
+    # The primary group (grp-<name>) must fit the system's group-name limit.
+    if len(name) > PROJECT_NAME_MAX:
+        raise ValueError(
+            f"Project name is too long: keep it to {PROJECT_NAME_MAX} characters so its "
+            f"UNIX group 'grp-{name}' stays within the {MAX_GROUP_NAME}-character system limit."
+        )
     return name
 
 
-def validate_subfolder_name(raw: str) -> str:
+def validate_subfolder_name(raw: str, project_name: str = "") -> str:
     name = _normalize(raw)
     if not name:
         raise ValueError("Subfolder name cannot be empty.")
     if name == "shr":
         raise ValueError("'shr' is reserved.")
+    if project_name:
+        group = f"{GROUP_PREFIX}{project_name}-{name}"
+        if len(group) > MAX_GROUP_NAME:
+            avail = MAX_GROUP_NAME - len(f"{GROUP_PREFIX}{project_name}-")
+            if avail < 1:
+                raise ValueError(
+                    "This project's name is too long to add subfolders — its group "
+                    f"prefix already fills the {MAX_GROUP_NAME}-character group-name limit."
+                )
+            raise ValueError(
+                f"Subfolder name too long: keep it to {avail} character(s) so the group "
+                f"name '{group}' stays within the {MAX_GROUP_NAME}-character limit."
+            )
     return name
 
 

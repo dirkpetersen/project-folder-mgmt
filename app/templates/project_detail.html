@@ -46,6 +46,10 @@
     {% endif %}
   </div>
 
+  {% if error %}
+  <div class="alert alert-error mt-4">{{ error }}</div>
+  {% endif %}
+
   {% if project.state == 'deleted' %}
   <div class="alert alert-error mt-4">
     <strong>Deleted.</strong> This project is in <code>.deleted</code> and will be
