@@ -26,28 +26,34 @@
     <div class="flex-row gap-3">
       {% if project.state == 'deleted' %}
       <form method="post" action="/projects/{{ project.name }}/undelete">
-        <button type="submit" class="btn btn-primary">Undelete</button>
+        <button type="submit" class="btn btn-primary"
+                title="Restore this deleted project: move it back from .deleted into the active project list. Members regain access.">Undelete</button>
       </form>
       {% elif project.state == 'deactivated' %}
       <form method="post" action="/projects/{{ project.name }}/reactivate">
-        <button type="submit" class="btn btn-primary">Reactivate</button>
+        <button type="submit" class="btn btn-primary"
+                title="Restore this deactivated project: move it back from .deactivated into the active project list, visible again.">Reactivate</button>
       </form>
       {% elif project.locked %}
       <form method="post" action="/projects/{{ project.name }}/unlock">
-        <button type="submit" class="btn btn-primary">Unlock</button>
+        <button type="submit" class="btn btn-primary"
+                title="Remove the read-only lock: restore group write to all folders so members can change files again.">Unlock</button>
       </form>
       {% else %}
       <form method="post" action="/projects/{{ project.name }}/lock"
             onsubmit="return confirm('Lock {{ project.name }} read-only? It stays visible and readable, but no one can change its contents until unlocked.')">
-        <button type="submit" class="btn btn-ghost">Lock</button>
+        <button type="submit" class="btn btn-ghost"
+                title="Make the whole project read-only IN PLACE. Files stay where they are and remain readable, but no one (except root) can add, change, or remove anything until you Unlock. Nothing is moved or deleted. Reversible.">Lock</button>
       </form>
       <form method="post" action="/projects/{{ project.name }}/deactivate"
             onsubmit="return confirm('Deactivate {{ project.name }}? It moves to projects/.deactivated and disappears from listings (declutter). Reactivate any time.')">
-        <button type="submit" class="btn btn-ghost">Deactivate</button>
+        <button type="submit" class="btn btn-ghost"
+                title="Move the project into projects/.deactivated to declutter the listing. It disappears from views and members lose access while deactivated, but nothing is destroyed — kept indefinitely until you Reactivate. Use for projects that are done/idle.">Deactivate</button>
       </form>
       <form method="post" action="/projects/{{ project.name }}/delete"
             onsubmit="return confirm('Delete {{ project.name }}? It moves to projects/.deleted and is permanently removed after 90 days. You can undelete it before then.')">
-        <button type="submit" class="btn btn-danger">Delete</button>
+        <button type="submit" class="btn btn-danger"
+                title="Soft-delete: move the project into projects/.deleted. It leaves the listing and members lose access. You can Undelete it for 90 days; after that it is permanently erased from disk.">Delete</button>
       </form>
       {% endif %}
     </div>
@@ -253,16 +259,19 @@
       <div class="flex-row gap-3">
         {% if sub.locked %}
         <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/unlock">
-          <button type="submit" class="btn btn-sm btn-primary">Unlock</button>
+          <button type="submit" class="btn btn-sm btn-primary"
+                  title="Remove the read-only lock on /{{ sub.name }}: its group can write to it again.">Unlock</button>
         </form>
         {% else %}
         <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/lock"
               onsubmit="return confirm('Lock /{{ sub.name }} read-only? It stays visible and readable, but its contents can''t be changed until unlocked.')">
-          <button type="submit" class="btn btn-sm btn-ghost">Lock</button>
+          <button type="submit" class="btn btn-sm btn-ghost"
+                  title="Make only this subfolder read-only IN PLACE. It stays visible and readable, but its contents can't be changed until unlocked. Nothing is moved or deleted. Reversible.">Lock</button>
         </form>
         <form method="post" action="/projects/{{ project.name }}/subfolders/{{ sub.name }}/delete"
               onsubmit="return confirm('Delete /{{ sub.name }}? It moves to the project .deleted area and is permanently removed after 90 days. You can undelete it before then.')">
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          <button type="submit" class="btn btn-sm btn-danger"
+                  title="Soft-delete this subfolder: move it into the project's .deleted area. Restorable for 90 days, then permanently erased. Other subfolders are untouched.">Delete</button>
         </form>
         {% endif %}
       </div>
