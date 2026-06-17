@@ -316,12 +316,17 @@ def set_subfolder_members(project_name: str, folder_name: str, members: list[str
     group = _assign_subfolder_group(project_name, folder_name, members)
     folder_path = PROJECTS_BASE / project_name / folder_name
     gid = grp.getgrnam(group).gr_gid
-    for p in [folder_path, *folder_path.rglob("*")]:
+    # Re-group the whole tree, but never follow a member-planted symlink: lchown
+    # the link itself, and walk with os.walk (which does not descend symlinked
+    # dirs) rather than rglob.
+    for p in _iter_tree(folder_path):
+        _regroup_nofollow(p, gid)
+    fd = _open_nofollow(folder_path)
+    if fd is not None:
         try:
-            os.chown(p, -1, gid)  # keep owner, set group
-        except FileNotFoundError:
-            pass
-    os.chmod(folder_path, 0o2770)
+            os.fchmod(fd, 0o2770)
+        finally:
+            os.close(fd)
     _set_inherit_acl(folder_path)
     _set_subfolder_visibility(folder_path, project_name, restricted=bool(members))
 
@@ -406,31 +411,90 @@ def _iter_tree(top: Path):
             yield Path(root) / name
 
 
+# --- symlink-safe privileged mutations -------------------------------------
+# The collaborative trees (all/ and open subfolders, 2770) are group-writable by
+# ordinary project members, so a member can plant a symlink inside them
+# (e.g. `ln -s /etc/shadow all/pwn`). Root must therefore NEVER follow a symlink
+# while it chowns/chmods/setfacls its way through the tree, or it can be tricked
+# into operating on a target outside the project — a local privilege escalation
+# to root. We classify and mutate every entry through an O_NOFOLLOW file
+# descriptor (a symlinked entry is refused atomically, with no TOCTOU window),
+# and use lchown for group changes so the link itself, not its target, is set.
+
+def _open_nofollow(path) -> int | None:
+    """Open an entry for metadata ops without following a final-component
+    symlink. Returns an fd, or None if the entry is a symlink (refused with
+    ELOOP), is a special file we can't open, or vanished."""
+    try:
+        return os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return None
+
+
+def _regroup_nofollow(path, gid: int) -> None:
+    """Set an entry's group without following symlinks: lchown sets the link
+    itself, never its target."""
+    try:
+        os.chown(path, -1, gid, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+
+
+def _setfacl_fd(fd: int, spec: str) -> None:
+    """Apply a default ACL to the exact inode behind `fd` (which was opened
+    O_NOFOLLOW) via /proc/self/fd, so setfacl can't be redirected to a symlink
+    target a racing member swaps in. The fd is passed to the child so the
+    /proc/self/fd entry resolves inside setfacl."""
+    proc = subprocess.run(
+        ["setfacl", "-d", "-m", spec, f"/proc/self/fd/{fd}"],
+        capture_output=True, text=True, pass_fds=[fd],
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"setfacl: {proc.stderr.strip()}")
+
+
+def _retree_entry(fd: int, *, lock: bool) -> None:
+    """Lock (read-only) or unlock (read/write) one already-opened, symlink-free
+    entry, operating on its fd so nothing is re-resolved by path."""
+    st = os.fstat(fd)
+    is_dir = stat.S_ISDIR(st.st_mode)
+    cur = stat.S_IMODE(st.st_mode)
+    if lock:
+        os.fchmod(fd, cur & ~0o020)               # clear group write
+        if is_dir:
+            _setfacl_fd(fd, "u::rwx,g::rx,o::-")   # default ACL: group read-only
+    elif is_dir:
+        os.fchmod(fd, 0o2770)                      # collaborative dir
+        _setfacl_fd(fd, "u::rwx,g::rwx,o::-")      # default ACL: group rw
+    else:
+        os.fchmod(fd, cur | 0o060)                 # file group rw
+
+
 def _lock_tree(top: Path) -> None:
     """Make a tree read-only: drop the group-write bit everywhere and drop the
-    default ACL's group-write bit on dirs (so the group can read but not change)."""
+    default ACL's group-write bit on dirs (so the group can read but not change).
+    Symlinks are skipped, never followed."""
     for p in _iter_tree(top):
+        fd = _open_nofollow(p)
+        if fd is None:
+            continue
         try:
-            mode = stat.S_IMODE(os.stat(p).st_mode)
-            os.chmod(p, mode & ~0o020)  # clear group write
-            if p.is_dir():
-                _run(["setfacl", "-d", "-m", "u::rwx,g::rx,o::-", str(p)])
-        except FileNotFoundError:
-            pass
+            _retree_entry(fd, lock=True)
+        finally:
+            os.close(fd)
 
 
 def _unlock_tree(top: Path) -> None:
     """Restore read/write: collaborative dirs back to 2770, files back to group
-    rw, and the default ACL's group-write bit restored."""
+    rw, and the default ACL's group-write bit restored. Symlinks are skipped."""
     for p in _iter_tree(top):
+        fd = _open_nofollow(p)
+        if fd is None:
+            continue
         try:
-            if p.is_dir():
-                os.chmod(p, 0o2770)
-                _run(["setfacl", "-d", "-m", "u::rwx,g::rwx,o::-", str(p)])
-            else:
-                os.chmod(p, stat.S_IMODE(os.stat(p).st_mode) | 0o060)  # group rw
-        except FileNotFoundError:
-            pass
+            _retree_entry(fd, lock=False)
+        finally:
+            os.close(fd)
 
 
 def _content_children(project_dir: Path) -> list:
